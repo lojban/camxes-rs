@@ -1,0 +1,19 @@
+[package]
+name = "camxes-rs"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+keywords = ["parsing", "grammar"]
+categories = ["peg", "parsing-expression-grammar", "parser-generator"]
+repository = "https://github.com/lojban/camxes.rs"
+description = "PEG generator"
+
+[dependencies]
+log = "0.4.22"
+
+[dev-dependencies]
+env_logger = "0.11.5"
+
+[[example]]
+name = "cmaxes-test"
+path = "src/examples/cmaxes-test.rs"
