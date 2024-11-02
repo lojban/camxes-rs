@@ -6,7 +6,7 @@ pub enum Rule {
     Empty,
     Any,
     Literal(String),
-    NonTerminal(String), 
+    NonTerminal(String),
     Range(String, String),
     Class(HashSet<String>),
     Group(Arc<Box<Rule>>),

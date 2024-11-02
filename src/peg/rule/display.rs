@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use super::types::Rule;
+use std::fmt::{Display, Formatter};
 
 impl Display for Rule {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -48,7 +48,7 @@ impl Display for Rule {
                         joined
                     }
                 )
-            },
+            }
             Rule::Sequence(sequence) => {
                 let joined = sequence
                     .iter()
@@ -64,7 +64,7 @@ impl Display for Rule {
                         joined
                     }
                 )
-            },
+            }
         }
     }
 }

@@ -48,6 +48,11 @@ impl Display for ParseError {
 
 impl Display for ErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            ErrorKind::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
+            ErrorKind::ExpressionDoesNotMatch => write!(f, "Expression does not match"),
+            ErrorKind::NotDidMatch(nodes) => write!(f, "Not predicate matched {} nodes", nodes.len()),
+            ErrorKind::NonTerminalDoesNotMatch => write!(f, "Non-terminal does not match"),
+        }
     }
 }

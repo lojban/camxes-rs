@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::peg::parsing::ParseError;
 use crate::peg::transformer::TransformError;
 
@@ -5,6 +6,15 @@ use crate::peg::transformer::TransformError;
 pub enum GrammarError {
     Parse(ParseError),
     Transform(TransformError),
+}
+
+impl Display for GrammarError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GrammarError::Parse(err) => write!(f, "Parse error: {}", err),
+            GrammarError::Transform(err) => write!(f, "Transform error: {}", err),
+        }
+    }
 }
 
 impl From<ParseError> for GrammarError {

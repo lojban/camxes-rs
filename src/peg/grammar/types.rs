@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use crate::peg::rule::Rule;
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct PEG {
