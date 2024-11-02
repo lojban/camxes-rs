@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 use crate::peg::parsing::ParseError;
 use crate::peg::transformer::TransformError;
+use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Debug)]
 pub enum GrammarError {

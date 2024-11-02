@@ -51,7 +51,9 @@ impl Display for ErrorKind {
         match self {
             ErrorKind::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
             ErrorKind::ExpressionDoesNotMatch => write!(f, "Expression does not match"),
-            ErrorKind::NotDidMatch(nodes) => write!(f, "Not predicate matched {} nodes", nodes.len()),
+            ErrorKind::NotDidMatch(nodes) => {
+                write!(f, "Not predicate matched {} nodes", nodes.len())
+            }
             ErrorKind::NonTerminalDoesNotMatch => write!(f, "Non-terminal does not match"),
         }
     }

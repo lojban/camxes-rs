@@ -20,18 +20,20 @@ pub enum TransformError {
 impl Display for TransformError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TransformError::CstShouldOnlyHaveOneRoot(msg) => 
-                write!(f, "CST should have exactly one root: {}", msg),
-            TransformError::CstShouldStartWithGrammar(msg) => 
-                write!(f, "CST should start with grammar: {}", msg),
-            TransformError::UnExpectedToken(token) => 
-                write!(f, "Unexpected token: {}", token),
-            TransformError::AmbiguousNonTerminal(msg) => 
-                write!(f, "Ambiguous non-terminal reference: {}", msg),
-            TransformError::EmptyIdentifier => 
-                write!(f, "Empty identifier"),
-            TransformError::WrongNumberOfTokens(msg) => 
-                write!(f, "Wrong number of tokens: {}", msg),
+            TransformError::CstShouldOnlyHaveOneRoot(msg) => {
+                write!(f, "CST should have exactly one root: {}", msg)
+            }
+            TransformError::CstShouldStartWithGrammar(msg) => {
+                write!(f, "CST should start with grammar: {}", msg)
+            }
+            TransformError::UnExpectedToken(token) => write!(f, "Unexpected token: {}", token),
+            TransformError::AmbiguousNonTerminal(msg) => {
+                write!(f, "Ambiguous non-terminal reference: {}", msg)
+            }
+            TransformError::EmptyIdentifier => write!(f, "Empty identifier"),
+            TransformError::WrongNumberOfTokens(msg) => {
+                write!(f, "Wrong number of tokens: {}", msg)
+            }
         }
     }
 }
