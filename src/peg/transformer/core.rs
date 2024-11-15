@@ -1,5 +1,5 @@
 use super::errors::TransformError;
-use crate::peg::grammar::PEG;
+use crate::peg::grammar::Peg;
 use crate::peg::grammar::{
     AND, ARROW, CHAR, CLASS, CLASS_MEMBER, DEF, DOT, EOF, EXPR, IDENT, LITERAL, LPAR, NOT, PLUS,
     PREFIX, PRIMARY, QUESTION, RANGE, RPAR, SEQUENCE, SLASH, SPACING, STAR, SUFFIX, TEXT,
@@ -16,9 +16,9 @@ pub struct Transformer<'a> {
 }
 
 impl Transformer<'_> {
-    pub fn build(&self, start_rule: &str, cst: Vec<ParseNode>) -> Result<PEG> {
+    pub fn build(&self, start_rule: &str, cst: Vec<ParseNode>) -> Result<Peg> {
         match &cst[..] {
-            [ParseNode::NonTerminal(name, _, tokens)] if name == TEXT => Ok(PEG {
+            [ParseNode::NonTerminal(name, _, tokens)] if name == TEXT => Ok(Peg {
                 rules: self.build_grammar_rules(tokens)?,
                 start: start_rule.to_string(),
             }),

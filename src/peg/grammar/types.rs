@@ -4,12 +4,12 @@ use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct PEG {
+pub struct Peg {
     pub rules: Arc<HashMap<String, Rule>>,
     pub start: String,
 }
 
-impl Display for PEG {
+impl Display for Peg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut rules: Vec<_> = self
             .rules

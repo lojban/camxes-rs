@@ -9,19 +9,19 @@ pub enum Rule {
     NonTerminal(String),
     Range(String, String),
     Class(HashSet<String>),
-    Group(Arc<Box<Rule>>),
-    ZeroOrMore(Arc<Box<Rule>>),
-    OneOrMore(Arc<Box<Rule>>),
-    Optional(Arc<Box<Rule>>),
-    And(Arc<Box<Rule>>),
-    Not(Arc<Box<Rule>>),
+    Group(Arc<Rule>),
+    ZeroOrMore(Arc<Rule>),
+    OneOrMore(Arc<Rule>),
+    Optional(Arc<Rule>),
+    And(Arc<Rule>),
+    Not(Arc<Rule>),
     Choice(Vec<Rule>),
     Sequence(Vec<Rule>),
 }
 
 impl Rule {
-    pub fn boxed(self) -> Arc<Box<Rule>> {
-        Arc::new(Box::new(self))
+    pub fn boxed(self) -> Arc<Rule> {
+        Arc::new(self)
     }
 
     pub fn create_character_class(chars: &[&str]) -> Rule {

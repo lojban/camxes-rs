@@ -1,10 +1,10 @@
 use super::types::Rule;
-use crate::peg::grammar::PEG;
+use crate::peg::grammar::Peg;
 use crate::peg::parsing::{ErrorKind, ParseError, ParseNode, ParseResult, Span};
 use log::debug;
 
 impl Rule {
-    pub fn parse(&self, peg: &PEG, input: &str, position: usize, depth: usize) -> ParseResult {
+    pub fn parse(&self, peg: &Peg, input: &str, position: usize, depth: usize) -> ParseResult {
         match self {
             Rule::Empty => ParseResult(1, position, Ok(vec![])),
 

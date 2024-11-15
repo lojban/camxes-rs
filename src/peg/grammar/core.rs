@@ -1,6 +1,6 @@
 use super::constants::*;
 use super::errors::GrammarError;
-use super::types::PEG;
+use super::types::Peg;
 use crate::peg::parsing::ParseResult;
 use crate::peg::rule::Rule;
 use crate::peg::transformer::Transformer;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 type GrammarResult<T> = Result<T, GrammarError>;
 
-impl PEG {
+impl Peg {
     pub fn new(start: &str, grammar: &str) -> GrammarResult<Self> {
         let parser = Self::bootstrap();
         match parser.parse(grammar) {

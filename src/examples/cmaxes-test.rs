@@ -1,4 +1,4 @@
-use camxes_rs::peg::grammar::PEG;
+use camxes_rs::peg::grammar::Peg;
 
 const CMAXES_GRAMMAR: (&str, &str) = (
     "text",
@@ -140,7 +140,7 @@ fn main() {
     env_logger::builder().init();
 
     let (start, grammar) = CMAXES_GRAMMAR;
-    let p = PEG::new(start, grammar).unwrap();
+    let p = Peg::new(start, grammar).unwrap();
     println!("{:#?}", p.parse("coi do"));
     println!("{}", p);
 }

@@ -4,4 +4,4 @@ mod errors;
 mod types;
 
 pub use self::constants::*;
-pub use self::types::PEG;
+pub use self::types::Peg;
