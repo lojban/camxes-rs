@@ -1,12 +1,14 @@
 [package]
 name = "camxes-rs"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A Parsing Expression Grammar (PEG) parser generator with zero-copy parsing and rich debugging capabilities"
 license = "MIT"
-keywords = ["parsing", "grammar"]
-categories = ["peg", "parsing-expression-grammar", "parser-generator"]
 repository = "https://github.com/lojban/camxes.rs"
-description = "PEG generator"
+keywords = ["peg", "parser", "grammar", "parsing"]
+categories = ["parsing", "parser-implementations"]
+readme = "README.md"
 
 [dependencies]
 log = "0.4.22"

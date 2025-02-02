@@ -1,6 +1,23 @@
 # 🚀 Rust PEG Parser Generator
 
+[![Crates.io](https://img.shields.io/crates/v/camxes-rs)](https://crates.io/crates/camxes-rs)
+[![Documentation](https://docs.rs/camxes-rs/badge.svg)](https://docs.rs/camxes-rs)
+[![License](https://img.shields.io/crates/l/camxes-rs)](LICENSE)
+
 A lightning-fast Parsing Expression Grammar (PEG) parser generator implemented in Rust. This tool helps you create parsers from grammar definitions with minimal hassle.
+
+## 📦 Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+camxes-rs = "0.1"
+```
+
+## 📚 Documentation
+
+Full API documentation is available on [docs.rs](https://docs.rs/camxes-rs)
 
 ## ✨ Features
 
