@@ -1,6 +1,6 @@
 [package]
 name = "camxes-rs"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "A Parsing Expression Grammar (PEG) parser generator with zero-copy parsing and rich debugging capabilities"
@@ -11,10 +11,10 @@ categories = ["parsing", "parser-implementations"]
 readme = "README.md"
 
 [dependencies]
-log = "0.4.22"
+log = "0.4.25"
 
 [dev-dependencies]
-env_logger = "0.11.5"
+env_logger = "0.11.6"
 
 [[example]]
 name = "cmaxes-test"

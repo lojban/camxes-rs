@@ -6,15 +6,6 @@
 
 A lightning-fast Parsing Expression Grammar (PEG) parser generator implemented in Rust. This tool helps you create parsers from grammar definitions with minimal hassle.
 
-## 📦 Installation
-
-Add this to your `Cargo.toml`:
-
-```toml
-[dependencies]
-camxes-rs = "0.1"
-```
-
 ## 📚 Documentation
 
 Full API documentation is available on [docs.rs](https://docs.rs/camxes-rs)
@@ -33,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-camxes-rs = "0.0.1"
+camxes-rs = "0.1.1"
 ```
 
 ## 🚦 Quick Start
