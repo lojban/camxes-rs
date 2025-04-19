@@ -2,14 +2,17 @@ mod app; // Import the App component
 
 use wasm_bindgen::prelude::*;
 
+use log::Level; // Import Level
+
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]
 pub fn run_app() -> Result<(), JsValue> {
-    // Initialize logging and panic hook
-    wasm_logger::init(wasm_logger::Config::default());
+    // Initialize logging and panic hook - Set level to Warn to hide Info messages
+    wasm_logger::init(wasm_logger::Config::new(Level::Warn));
     console_error_panic_hook::set_once();
 
-    log::info!("Starting Loglan WASM App");
+    // This log message will no longer appear in the console by default
+    // log::info!("Starting Loglan WASM App");
 
     // Mount the Yew app
     let document = web_sys::window().unwrap().document().unwrap();
