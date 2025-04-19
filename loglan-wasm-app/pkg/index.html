@@ -30,9 +30,17 @@
     </style>
 </head>
 <body class="font-sans leading-normal">
-    <!-- The Yew app will mount itself here -->
-    <!-- Add a container for the Yew app for better structure -->
-    <div id="yew-app" class="yew-app-container">
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="flex justify-center items-center min-h-screen">
+        <div class="text-center">
+            <p class="text-xl font-semibold text-gray-700">Loading Parser...</p>
+            <p class="text-gray-500">Please wait while the application initializes.</p>
+            <!-- Optional: Add a spinner SVG or animation here -->
+        </div>
+    </div>
+
+    <!-- The Yew app will mount itself here, initially hidden or inside a container that becomes visible -->
+    <div id="yew-app" class="yew-app-container" style="display: none;"> <!-- Initially hidden -->
         <!-- Yew will render the App component inside this div -->
     </div>
     <script type="module">
