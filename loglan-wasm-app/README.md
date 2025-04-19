@@ -46,3 +46,10 @@ This application provides a web-based interface to parse Loglan text using the `
 3.  **Open in Browser:** Open your web browser and navigate to the address provided by the server (e.g., `http://localhost:8080` or `http://127.0.0.1:8080`).
 
 You should now see the Loglan parser interface. Enter text and click "Parse" to see the results.
+
+## 🚀 Deployment
+
+This application is automatically built and deployed to GitHub Pages on every push to the `main` branch.
+
+You can access the live version here: [https://<your-github-username>.github.io/camxes.rs/](https://<your-github-username>.github.io/camxes.rs/)
+*(Replace `<your-github-username>` with your actual GitHub username or organization name)*
