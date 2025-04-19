@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loglan Parser (camxes-rs WASM)</title>
+    <!-- Include Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Optional: Customize Tailwind configuration if needed
+        // tailwind.config = {
+        //   theme: {
+        //     extend: {
+        //       colors: {
+        //         clifford: '#da373d',
+        //       }
+        //     }
+        //   }
+        // }
+    </script>
+    <style type="text/tailwindcss">
+        /* Add custom base styles or components here if needed */
+        body {
+            @apply bg-gray-100 text-gray-800;
+        }
+        /* Style the Yew root container if necessary */
+        .yew-app-container {
+             @apply container mx-auto p-4 md:p-8;
+        }
+    </style>
+</head>
+<body class="font-sans leading-normal">
+    <!-- The Yew app will mount itself here -->
+    <!-- Add a container for the Yew app for better structure -->
+    <div id="yew-app" class="yew-app-container">
+        <!-- Yew will render the App component inside this div -->
+    </div>
+    <script type="module">
+        // Ensure Yew mounts inside the designated div
+        import init, { run_app } from './loglan_wasm_app.js';
+        async function main() {
+           await init();
+           run_app(); // Ensure run_app is called after init
+        }
+        main();
+        init();
+    </script>
+</body>
+</html>

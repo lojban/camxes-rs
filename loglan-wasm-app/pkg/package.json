@@ -1,0 +1,20 @@
+{
+  "name": "loglan-wasm-app",
+  "type": "module",
+  "collaborators": [
+    "Your Name <your.email@example.com>"
+  ],
+  "description": "A WASM web interface for the Loglan parser using camxes-rs",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "loglan_wasm_app_bg.wasm",
+    "loglan_wasm_app.js",
+    "loglan_wasm_app.d.ts"
+  ],
+  "main": "loglan_wasm_app.js",
+  "types": "loglan_wasm_app.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
