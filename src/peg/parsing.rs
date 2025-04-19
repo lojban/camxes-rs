@@ -19,6 +19,7 @@ pub enum ErrorKind {
     ExpressionDoesNotMatch,
     NotDidMatch(Vec<ParseNode>),
     NonTerminalDoesNotMatch,
+    NonTerminalDoesNotExist(String),
 }
 
 #[derive(Clone, Debug)]
@@ -55,6 +56,9 @@ impl Display for ErrorKind {
                 write!(f, "Not predicate matched {} nodes", nodes.len())
             }
             ErrorKind::NonTerminalDoesNotMatch => write!(f, "Non-terminal does not match"),
+            ErrorKind::NonTerminalDoesNotExist(name) => {
+                write!(f, "Non-terminal rule '{}' does not exist", name)
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
+use crate::peg::parsing::ParseResult;
 use crate::peg::rule::Rule;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
@@ -7,6 +9,8 @@ use std::sync::Arc;
 pub struct Peg {
     pub rules: Arc<HashMap<String, Rule>>,
     pub start: String,
+    // Memoization cache: (rule_name, position) -> ParseResult
+    pub memo: RefCell<HashMap<(String, usize), ParseResult>>,
 }
 
 impl Display for Peg {

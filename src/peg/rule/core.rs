@@ -54,43 +54,77 @@ impl Rule {
             }
 
             Rule::NonTerminal(name) => {
+                let key = (name.clone(), position);
+
+                // Check cache
+                if let Some(cached_result) = peg.memo.borrow().get(&key) {
+                    debug!(
+                        "{}cache hit {name} @ {position} -> {}",
+                        "│".repeat(depth),
+                        cached_result.1
+                    );
+                    return cached_result.clone();
+                }
+
                 debug!("{}parsing {name} @ {position}", "│".repeat(depth));
-                let output =
-                    match peg
-                        .rules
-                        .get(name)
-                        .unwrap()
-                        .parse(peg, input, position, depth + 1)
-                    {
-                        ParseResult(cost, new_pos, Ok(matches)) => ParseResult(
-                            cost,
-                            new_pos,
-                            Ok(vec![ParseNode::NonTerminal(
-                                name.clone(),
-                                Span(position, new_pos),
-                                matches,
-                            )]),
-                        ),
-                        ParseResult(cost, _, Err(inner)) => ParseResult(
-                            cost,
+
+                // --- Revised Logic Start ---
+                let rule = match peg.rules.get(name) {
+                    Some(r) => r,
+                    None => {
+                        // Rule not found: create an error ParseResult
+                        let err = ParseError {
                             position,
-                            Err(ParseError {
-                                position,
-                                expression: self.clone(),
-                                error: ErrorKind::NonTerminalDoesNotMatch,
-                                cause: Some(Box::from(inner)),
-                            }),
-                        ),
-                    };
+                            expression: self.clone(),
+                            error: ErrorKind::NonTerminalDoesNotExist(name.clone()), // Specific error
+                            cause: None,
+                        };
+                        let res = ParseResult(1, position, Err(err)); // Cost is 1 for rule lookup failure
+                        // Cache the error result
+                        peg.memo.borrow_mut().insert(key, res.clone());
+                        // Early return with the error ParseResult
+                        return res;
+                    }
+                };
+
+                // Rule found, now parse using the retrieved rule
+                let result = match rule.parse(peg, input, position, depth + 1) {
+                    // Inner parse succeeded
+                    ParseResult(cost, new_pos, Ok(matches)) => ParseResult(
+                        cost, // Propagate cost from inner parse
+                        new_pos,
+                        Ok(vec![ParseNode::NonTerminal(
+                            name.clone(),
+                            Span(position, new_pos),
+                            matches,
+                        )]),
+                    ),
+                    // Inner parse failed
+                    ParseResult(cost, _, Err(inner)) => ParseResult(
+                        cost, // Propagate cost from inner parse
+                        position, // Position remains unchanged on failure
+                        Err(ParseError {
+                            position,
+                            expression: self.clone(), // The NonTerminal rule itself caused the error indirectly
+                            error: ErrorKind::NonTerminalDoesNotMatch,
+                            cause: Some(Box::from(inner)), // Wrap the inner error
+                        }),
+                    ),
+                };
+                // --- Revised Logic End ---
+
                 debug!(
                     "{}└{} {} @ {} -> {}",
                     "│".repeat(depth),
-                    if output.2.is_ok() { "ok" } else { "err" },
+                    if result.2.is_ok() { "ok" } else { "err" },
                     name,
                     position,
-                    output.1
+                    result.1
                 );
-                output
+
+                // Store result in cache before returning
+                peg.memo.borrow_mut().insert(key, result.clone());
+                result
             }
 
             Rule::Choice(choices) => {

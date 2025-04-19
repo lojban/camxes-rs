@@ -7,6 +7,7 @@ use crate::peg::grammar::{
 use crate::peg::parsing::{ParseNode, Span};
 use crate::peg::rule::Rule;
 use std::collections::{HashMap, HashSet};
+use std::cell::RefCell;
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, TransformError>;
@@ -21,6 +22,7 @@ impl Transformer<'_> {
             [ParseNode::NonTerminal(name, _, tokens)] if name == TEXT => Ok(Peg {
                 rules: self.build_grammar_rules(tokens)?,
                 start: start_rule.to_string(),
+                memo: RefCell::new(HashMap::new()), // Initialize the memoization table
             }),
             [ParseNode::NonTerminal(n, _, _)] => Err(TransformError::CstShouldStartWithGrammar(
                 format!("Found '{n}' instead!"),

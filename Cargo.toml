@@ -1,6 +1,6 @@
 [package]
 name = "camxes-rs"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "A Parsing Expression Grammar (PEG) parser generator with zero-copy parsing and rich debugging capabilities"
@@ -11,11 +11,23 @@ categories = ["parsing", "parser-implementations"]
 readme = "README.md"
 
 [dependencies]
-log = "0.4.25"
+log = "0.4.27"
 
 [dev-dependencies]
-env_logger = "0.11.6"
+env_logger = "0.11.8"
 
 [[example]]
 name = "cmaxes-test"
 path = "src/examples/cmaxes-test.rs"
+
+[[example]]
+name = "loglan"
+path = "src/examples/loglan.rs"
+
+[profile.release]
+lto = true           # Enable Link Time Optimization
+codegen-units = 1    # Maximize optimization opportunities (slower compile time)
+strip = true         # Strip symbols from the binary
+opt-level = 3        # Optimize for speed (default for release)
+panic = 'abort'      # Abort on panic for potentially smaller/faster code
+

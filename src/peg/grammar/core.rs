@@ -4,6 +4,7 @@ use super::types::Peg;
 use crate::peg::parsing::ParseResult;
 use crate::peg::rule::Rule;
 use crate::peg::transformer::Transformer;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -23,6 +24,8 @@ impl Peg {
     }
 
     pub fn parse(&self, input: &str) -> ParseResult {
+        // Clear the memoization cache before starting a new parse
+        self.memo.borrow_mut().clear();
         Rule::NonTerminal(self.start.clone()).parse(self, input, 0, 0)
     }
 
@@ -36,6 +39,7 @@ impl Peg {
         Self {
             start: TEXT.to_string(),
             rules: Arc::new(grammar_builder.rules),
+            memo: RefCell::new(HashMap::new()),
         }
     }
 }
