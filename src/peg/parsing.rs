@@ -1,19 +1,62 @@
 use crate::peg::rule::Rule;
+use serde::Serialize; // Import Serialize
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)] // Add Serialize
 pub struct Span(pub usize, pub usize);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)] // Add Serialize
+#[serde(tag = "type")] // Use tagged enum representation for clarity in JSON
 pub enum ParseNode {
-    Terminal(Span),
-    NonTerminal(String, Span, Vec<ParseNode>),
+    Terminal { span: Span },
+    NonTerminal {
+        name: String,
+        span: Span,
+        children: Vec<ParseNode>,
+    },
 }
 
-#[derive(Clone, Debug)]
+// Custom Debug implementation for ParseResult to avoid deriving Debug on Result<...>
+#[derive(Clone)]
 pub struct ParseResult(pub u32, pub usize, pub Result<Vec<ParseNode>, ParseError>);
 
-#[derive(Clone, Debug)]
+impl std::fmt::Debug for ParseResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ParseResult")
+         .field(&self.0) // cost
+         .field(&self.1) // position
+         .field(&self.2) // result (Vec<ParseNode> or ParseError)
+         .finish()
+    }
+}
+
+
+// Make ParseResult serializable
+#[derive(Serialize)] // Add Serialize
+struct SerializableParseResult<'a> {
+    cost: u32,
+    position: usize,
+    #[serde(flatten)] // Flatten Result into the main structure
+    result: &'a Result<Vec<ParseNode>, ParseError>,
+}
+
+impl Serialize for ParseResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        SerializableParseResult {
+            cost: self.0,
+            position: self.1,
+            result: &self.2,
+        }
+        .serialize(serializer)
+    }
+}
+
+
+#[derive(Clone, Debug, Serialize)] // Add Serialize
+#[serde(tag = "kind")] // Use tagged enum representation
 pub enum ErrorKind {
     UnexpectedEndOfInput,
     ExpressionDoesNotMatch,
@@ -22,10 +65,11 @@ pub enum ErrorKind {
     NonTerminalDoesNotExist(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)] // Add Serialize
 pub struct ParseError {
     pub position: usize,
-    pub expression: Rule,
+    #[serde(skip)] // Skip serializing the full Rule enum for now to avoid complexity
+    pub expression: Rule, // Consider serializing Rule name or simplified representation if needed
     pub error: ErrorKind,
     pub cause: Option<Box<ParseError>>,
 }

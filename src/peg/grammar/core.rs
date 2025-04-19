@@ -4,6 +4,7 @@ use super::types::Peg;
 use crate::peg::parsing::ParseResult;
 use crate::peg::rule::Rule;
 use crate::peg::transformer::Transformer;
+use serde_json; // Import serde_json
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -28,6 +29,14 @@ impl Peg {
         self.memo.borrow_mut().clear();
         Rule::NonTerminal(self.start.clone()).parse(self, input, 0, 0)
     }
+
+    /// Parses the input and returns the result as a JSON string.
+    /// Handles both successful parses and errors, serializing them appropriately.
+    pub fn parse_to_json(&self, input: &str) -> Result<String, serde_json::Error> {
+        let parse_result = self.parse(input);
+        serde_json::to_string_pretty(&parse_result) // Use pretty print for readability
+    }
+
 
     fn bootstrap() -> Self {
         let mut grammar_builder = RuleBuilder::new();

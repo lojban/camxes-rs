@@ -141,6 +141,21 @@ fn main() {
 
     let (start, grammar) = CMAXES_GRAMMAR;
     let p = Peg::new(start, grammar).unwrap();
-    println!("{:#?}", p.parse("coi do"));
-    println!("{}", p);
+    let input = "coi do";
+    println!("Parsing input: '{}'", input);
+    println!("Grammar:\n{}", p);
+
+
+    println!("\n--- Debug Output ---");
+    println!("{:#?}", p.parse(input));
+
+    println!("\n--- JSON Output ---");
+     match p.parse_to_json(input) {
+        Ok(json_output) => {
+            println!("{}", json_output);
+        }
+        Err(e) => {
+            eprintln!("Error generating JSON output: {}", e);
+        }
+    }
 }

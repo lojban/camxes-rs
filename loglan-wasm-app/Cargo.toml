@@ -1,0 +1,27 @@
+[package]
+name = "loglan-wasm-app"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"] # Optional: Update author info
+description = "A WASM web interface for the Loglan parser using camxes-rs"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+camxes-rs = { path = ".." } # Use the parent library
+yew = { version = "0.21", features = ["csr"] }
+wasm-bindgen = "0.2"
+wasm-logger = "0.2"
+console_error_panic_hook = "0.1"
+log = "0.4"
+web-sys = { version = "0.3.77", features = ["HtmlInputElement", "HtmlSelectElement"] } # Add HtmlSelectElement
+serde = { version = "1.0", features = ["derive"] } # Add serde for wasm app if needed indirectly or directly
+serde_json = "1.0" # Add serde_json for wasm app
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 'z' # Optimize for size
+panic = 'abort'

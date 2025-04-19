@@ -13,7 +13,7 @@ impl Rule {
                     ParseResult(
                         1,
                         position + 1,
-                        Ok(vec![ParseNode::Terminal(Span(position, position + 1))]),
+                        Ok(vec![ParseNode::Terminal { span: Span(position, position + 1) }]),
                     )
                 } else {
                     ParseResult(
@@ -34,10 +34,10 @@ impl Rule {
                     ParseResult(
                         1,
                         position + pattern.len(),
-                        Ok(vec![ParseNode::Terminal(Span(
+                        Ok(vec![ParseNode::Terminal { span: Span(
                             position,
                             position + pattern.len(),
-                        ))]),
+                        )}]),
                     )
                 } else {
                     ParseResult(
@@ -93,11 +93,11 @@ impl Rule {
                     ParseResult(cost, new_pos, Ok(matches)) => ParseResult(
                         cost, // Propagate cost from inner parse
                         new_pos,
-                        Ok(vec![ParseNode::NonTerminal(
-                            name.clone(),
-                            Span(position, new_pos),
-                            matches,
-                        )]),
+                        Ok(vec![ParseNode::NonTerminal {
+                            name: name.clone(),
+                            span: Span(position, new_pos),
+                            children: matches,
+                        }]),
                     ),
                     // Inner parse failed
                     ParseResult(cost, _, Err(inner)) => ParseResult(
@@ -213,7 +213,7 @@ impl Rule {
                         ParseResult(
                             1,
                             position + 1,
-                            Ok(vec![ParseNode::Terminal(Span(position, position + 1))]),
+                            Ok(vec![ParseNode::Terminal { span: Span(position, position + 1) }]),
                         )
                     } else {
                         ParseResult(
@@ -249,10 +249,10 @@ impl Rule {
                     ParseResult(
                         1,
                         position + symbol.len(),
-                        Ok(vec![ParseNode::Terminal(Span(
+                        Ok(vec![ParseNode::Terminal { span: Span(
                             position,
                             position + symbol.len(),
-                        ))]),
+                        )}]),
                     )
                 } else {
                     ParseResult(

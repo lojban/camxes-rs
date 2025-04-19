@@ -153,4 +153,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
+## 🌐 Loglan WASM Parser
+
+A web-based interface for the Loglan parser is available in the `loglan-wasm-app` directory. See the [Loglan WASM App README](loglan-wasm-app/README.md) for instructions on how to build and run it.
+
+---
+
 Built with ❤️ for the Rust community
