@@ -24,10 +24,14 @@ web-sys = { version = "0.3.77", features = [
     "HtmlSelectElement",
     "Node",
     "Window",
-    "CssStyleDeclaration", # Add CssStyleDeclaration
+    "CssStyleDeclaration",
+    "Navigator",      # Add Navigator for clipboard access
+    "Clipboard",      # Add Clipboard API
 ]}
-serde = { version = "1.0", features = ["derive"] } # Add serde for wasm app if needed indirectly or directly
-serde_json = "1.0" # Add serde_json for wasm app
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+gloo-timers = { version = "0.3.0", features = ["futures"] } # For button text change timeout
+wasm-bindgen-futures = "0.4" # To await clipboard write
 
 [profile.release]
 lto = true

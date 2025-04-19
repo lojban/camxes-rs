@@ -1,8 +1,10 @@
 use camxes_rs::grammars::LOGLAN_GRAMMAR;
 use camxes_rs::peg::grammar::Peg;
-use log::info;
+use gloo_timers::future::TimeoutFuture;
+use log::{error, info};
 use std::cell::RefCell;
-use web_sys::{self, HtmlSelectElement}; // Import HtmlSelectElement
+use wasm_bindgen_futures::spawn_local;
+use web_sys::{self, HtmlSelectElement}; // Removed unused HtmlTextAreaElement
 use yew::prelude::*;
 
 // Define the output format options
@@ -46,9 +48,10 @@ fn get_or_init_peg() -> Result<Peg, String> {
 #[function_component(App)]
 pub fn app() -> Html {
     let input_text = use_state(String::new);
-    let parse_result = use_state(String::new);
+    let parse_result = use_state(|| AttrValue::from("Output will appear here...")); // Use AttrValue for efficiency
     let error_message = use_state(|| Option::<String>::None); // State for initialization error
     let output_format = use_state(|| OutputFormat::Json); // State for output format
+    let copy_button_text = use_state(|| AttrValue::from("Copy")); // State for copy button text
 
     // Attempt to initialize PEG on first render and handle potential errors
     use_effect_with((), {
@@ -84,25 +87,64 @@ pub fn app() -> Html {
                             let result = peg.parse(&input);
                             format!("{:#?}", result)
                         }
-                        OutputFormat::Json => {
-                             match peg.parse_to_json(&input) {
-                                Ok(json) => json,
-                                Err(e) => {
-                                    log::error!("Failed to serialize result to JSON: {}", e);
-                                    format!("Error serializing to JSON: {}", e)
-                                }
+                        OutputFormat::Json => match peg.parse_to_json(&input) {
+                            Ok(json) => json,
+                            Err(e) => {
+                                error!("Failed to serialize result to JSON: {}", e);
+                                format!("Error serializing to JSON: {}", e)
                             }
-                        }
+                        },
                     };
-                    info!("Parse result: {}", result_str);
-                    parse_result_handle.set(result_str);
+                    info!("Parse result generated.");
+                    parse_result_handle.set(AttrValue::from(result_str)); // Set AttrValue
                     error_message_handle.set(None); // Clear any previous init error
                 }
                 Err(e) => {
-                    log::error!("Cannot parse, PEG initialization failed: {}", e);
-                    parse_result_handle.set("Error: Parser not initialized.".to_string());
+                    error!("Cannot parse, PEG initialization failed: {}", e);
+                    parse_result_handle.set(AttrValue::from("Error: Parser not initialized."));
                     error_message_handle.set(Some(e.clone())); // Ensure error message is shown
                 }
+            }
+        })
+    };
+
+    let on_copy_click = {
+        let parse_result_handle = parse_result.clone();
+        let copy_button_text_handle = copy_button_text.clone();
+        Callback::from(move |_| {
+            let result_text = (*parse_result_handle).clone(); // Clone AttrValue
+            let button_text_handle = copy_button_text_handle.clone();
+            if let Some(clipboard) = web_sys::window()
+                .and_then(|win| Some(win.navigator().clipboard()))
+            {
+                let promise = clipboard.write_text(&result_text);
+                spawn_local(async move {
+                    match wasm_bindgen_futures::JsFuture::from(promise).await {
+                        Ok(_) => {
+                            info!("Text copied to clipboard.");
+                            button_text_handle.set(AttrValue::from("Copied!"));
+                            // Reset button text after a delay
+                            TimeoutFuture::new(1500).await; // Wait 1.5 seconds
+                            button_text_handle.set(AttrValue::from("Copy"));
+                        }
+                        Err(e) => {
+                            error!("Failed to copy text: {:?}", e);
+                            button_text_handle.set(AttrValue::from("Error"));
+                            // Reset button text after a delay
+                            TimeoutFuture::new(1500).await;
+                            button_text_handle.set(AttrValue::from("Copy"));
+                        }
+                    }
+                });
+            } else {
+                error!("Clipboard API not available.");
+                button_text_handle.set(AttrValue::from("No API"));
+                 // Reset button text after a delay
+                let button_text_handle_clone = button_text_handle.clone();
+                spawn_local(async move {
+                    TimeoutFuture::new(1500).await;
+                    button_text_handle_clone.set(AttrValue::from("Copy"));
+                });
             }
         })
     };
@@ -163,11 +205,23 @@ pub fn app() -> Html {
                      </div>
                 }
 
-                // Display Parse Result
-                <h2 class="text-xl font-semibold text-gray-700 mb-3">{ "Parse Result:" }</h2>
-                <pre class="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm text-gray-700 whitespace-pre-wrap break-words overflow-x-auto">
-                    { if (*parse_result).is_empty() { "Output will appear here..." } else { &*parse_result } }
-                </pre>
+                // Display Parse Result Area
+                <div class="relative"> // Relative container for positioning the button
+                    <h2 class="text-xl font-semibold text-gray-700 mb-3">{ "Parse Result:" }</h2>
+                    <textarea
+                        readonly=true
+                        rows="10" // Adjust rows as needed
+                        class="w-full p-3 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-300" // Added focus style
+                        value={(*parse_result).clone()} // Use AttrValue directly
+                    />
+                    <button
+                        onclick={on_copy_click}
+                        class="absolute top-10 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-2 rounded transition duration-150 ease-in-out focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        title="Copy result to clipboard"
+                    >
+                        { (*copy_button_text).clone() } // Use button text state
+                    </button>
+                </div>
             </div>
         </div>
     }
