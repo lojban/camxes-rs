@@ -1,6 +1,6 @@
-use crate::peg::rule::Rule;
-use serde::Serialize; // Import Serialize
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize)] // Add Serialize
 pub struct Span(pub usize, pub usize);
@@ -16,27 +16,25 @@ pub enum ParseNode {
     },
 }
 
-// Custom Debug implementation for ParseResult to avoid deriving Debug on Result<...>
+/// Parse result: (cost, position, payload). Payload is Arc-wrapped so cloning is cheap (memo cache).
 #[derive(Clone)]
-pub struct ParseResult(pub u32, pub usize, pub Result<Vec<ParseNode>, ParseError>);
+pub struct ParseResult(pub u32, pub usize, pub Arc<Result<Vec<ParseNode>, ParseError>>);
 
 impl std::fmt::Debug for ParseResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("ParseResult")
-         .field(&self.0) // cost
-         .field(&self.1) // position
-         .field(&self.2) // result (Vec<ParseNode> or ParseError)
-         .finish()
+            .field(&self.0)
+            .field(&self.1)
+            .field(&self.2)
+            .finish()
     }
 }
 
-
-// Make ParseResult serializable
-#[derive(Serialize)] // Add Serialize
+#[derive(Serialize)]
 struct SerializableParseResult<'a> {
     cost: u32,
     position: usize,
-    #[serde(flatten)] // Flatten Result into the main structure
+    #[serde(flatten)]
     result: &'a Result<Vec<ParseNode>, ParseError>,
 }
 
@@ -48,15 +46,15 @@ impl Serialize for ParseResult {
         SerializableParseResult {
             cost: self.0,
             position: self.1,
-            result: &self.2,
+            result: self.2.as_ref(),
         }
         .serialize(serializer)
     }
 }
 
 
-#[derive(Clone, Debug, Serialize)] // Add Serialize
-#[serde(tag = "kind")] // Use tagged enum representation
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind")]
 pub enum ErrorKind {
     UnexpectedEndOfInput,
     ExpressionDoesNotMatch,
@@ -65,13 +63,39 @@ pub enum ErrorKind {
     NonTerminalDoesNotExist(String),
 }
 
-#[derive(Clone, Debug, Serialize)] // Add Serialize
+/// Parse error with lazy line/column: only `position` is stored; use `line_column(input)` when needed.
+#[derive(Clone, Debug, Serialize)]
 pub struct ParseError {
     pub position: usize,
-    #[serde(skip)] // Skip serializing the full Rule enum for now to avoid complexity
-    pub expression: Rule, // Consider serializing Rule name or simplified representation if needed
+    /// Rule name or short description for error reporting (no full Rule clone).
+    pub rule_name: String,
     pub error: ErrorKind,
     pub cause: Option<Box<ParseError>>,
+}
+
+/// Compute (1-based line, 1-based column) from input and byte position. O(position).
+pub fn line_column(input: &str, position: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut column = 1;
+    for (i, c) in input.char_indices() {
+        if i >= position {
+            break;
+        }
+        if c == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+    (line, column)
+}
+
+impl ParseError {
+    /// Lazy line/column computation (call when formatting or reporting).
+    pub fn line_column(&self, input: &str) -> (usize, usize) {
+        line_column(input, self.position)
+    }
 }
 
 impl Display for ParseError {
@@ -80,12 +104,12 @@ impl Display for ParseError {
             None => write!(
                 f,
                 "Encountered {} @ {} for '{}'",
-                self.error, self.position, self.expression
+                self.error, self.position, self.rule_name
             ),
             Some(inner) => write!(
                 f,
                 "Encountered {} @ {} for '{}'\n\tCaused by: {}",
-                self.error, self.position, self.expression, inner
+                self.error, self.position, self.rule_name, inner
             ),
         }
     }

@@ -1,6 +1,6 @@
 use super::constants::*;
 use super::errors::GrammarError;
-use super::types::Peg;
+use super::types::{MemoMap, Peg};
 use crate::peg::parsing::ParseResult;
 use crate::peg::rule::Rule;
 use crate::peg::transformer::Transformer;
@@ -15,12 +15,14 @@ impl Peg {
     pub fn new(start: &str, grammar: &str) -> GrammarResult<Self> {
         let parser = Self::bootstrap();
         match parser.parse(grammar) {
-            ParseResult(_, _, Ok(tokens)) => Transformer {
-                source: grammar.trim(),
-            }
-            .build(start, tokens)
-            .map_err(GrammarError::from),
-            ParseResult(_, _, Err(e)) => Err(GrammarError::from(e)),
+            ParseResult(_, _, ref payload) => match payload.as_ref() {
+                Ok(tokens) => Transformer {
+                    source: grammar.trim(),
+                }
+                .build(start, tokens.clone())
+                .map_err(GrammarError::from),
+                Err(e) => Err(GrammarError::from(e.clone())),
+            },
         }
     }
 
@@ -48,7 +50,7 @@ impl Peg {
         Self {
             start: TEXT.to_string(),
             rules: Arc::new(grammar_builder.rules),
-            memo: RefCell::new(HashMap::new()),
+            memo: RefCell::new(MemoMap::default()),
         }
     }
 }

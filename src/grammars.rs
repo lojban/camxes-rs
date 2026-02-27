@@ -1,4 +1,6 @@
 //! Publicly accessible grammar constants.
+//!
+//! For long-running apps, build the parser once and reuse: `let peg = Peg::new(LOGLAN_GRAMMAR.0, LOGLAN_GRAMMAR.1).unwrap();`
 
 /// The Loglan grammar definition.
 /// Format: (start_rule, grammar_string)

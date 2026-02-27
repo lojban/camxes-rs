@@ -5,12 +5,14 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
+/// Memo key: (rule_name, position). Using rustc_hash for faster hashing in the hot path.
+pub type MemoMap = rustc_hash::FxHashMap<(String, usize), ParseResult>;
+
 #[derive(Clone, Debug)]
 pub struct Peg {
     pub rules: Arc<HashMap<String, Rule>>,
     pub start: String,
-    // Memoization cache: (rule_name, position) -> ParseResult
-    pub memo: RefCell<HashMap<(String, usize), ParseResult>>,
+    pub memo: RefCell<MemoMap>,
 }
 
 impl Display for Peg {

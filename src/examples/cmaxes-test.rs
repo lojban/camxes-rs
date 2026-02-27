@@ -327,7 +327,7 @@ fn main() {
         let input = format!("{} ", lujvo);
         let parse_result = p.parse(&input);
 
-        match &parse_result.2 {
+        match parse_result.2.as_ref() {
             Ok(nodes) => {
                 let actual = match get_segments(&input, nodes) {
                     Some(segments) => segments,

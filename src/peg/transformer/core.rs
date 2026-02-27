@@ -1,5 +1,6 @@
 use super::errors::TransformError;
 use crate::peg::grammar::Peg;
+use crate::peg::grammar::MemoMap;
 use crate::peg::grammar::{
     AND, ARROW, CHAR, CLASS, CLASS_MEMBER, DEF, DOT, EOF, EXPR, IDENT, LITERAL, LPAR, NOT, PLUS,
     PREFIX, PRIMARY, QUESTION, RANGE, RPAR, SEQUENCE, SLASH, SPACING, STAR, SUFFIX, TEXT,
@@ -22,7 +23,7 @@ impl Transformer<'_> {
             [ParseNode::NonTerminal { name, children: tokens, .. }] if name == TEXT => Ok(Peg {
                 rules: self.build_grammar_rules(tokens)?,
                 start: start_rule.to_string(),
-                memo: RefCell::new(HashMap::new()), // Initialize the memoization table
+                memo: RefCell::new(MemoMap::default()),
             }),
             [ParseNode::NonTerminal { name: n, .. }] => Err(TransformError::CstShouldStartWithGrammar(
                 format!("Found '{n}' instead!"),

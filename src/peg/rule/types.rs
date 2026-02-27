@@ -27,4 +27,13 @@ impl Rule {
     pub fn create_character_class(chars: &[&str]) -> Rule {
         Rule::Class(chars.iter().map(|&c| c.to_string()).collect())
     }
+
+    /// Short description for ParseError (avoids storing full Rule in error).
+    pub fn error_description(&self) -> String {
+        match self {
+            Rule::NonTerminal(n) => n.clone(),
+            Rule::Literal(p) => format!("'{}'", p),
+            _ => format!("{}", self),
+        }
+    }
 }
