@@ -1,6 +1,6 @@
 [package]
 name = "camxes-rs"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 description = "A Parsing Expression Grammar (PEG) parser generator with zero-copy parsing and rich debugging capabilities"
