@@ -13,12 +13,13 @@ type GrammarResult<T> = Result<T, GrammarError>;
 
 impl Peg {
     pub fn new(start: &str, grammar: &str) -> GrammarResult<Self> {
+        // Token spans index into the text that was parsed, so parse the same
+        // trimmed text the transformer slices (indented grammars used to panic).
+        let grammar = grammar.trim();
         let parser = Self::bootstrap();
         match parser.parse(grammar) {
             ParseResult(_, _, ref payload) => match payload.as_ref() {
-                Ok(tokens) => Transformer {
-                    source: grammar.trim(),
-                }
+                Ok(tokens) => Transformer { source: grammar }
                 .build(start, tokens.clone())
                 .map_err(GrammarError::from),
                 Err(e) => Err(GrammarError::from(e.clone())),

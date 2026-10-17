@@ -8,3 +8,5 @@
 /loglan-wasm-app/pkg
 
 .specstory/**
+# local path override for tergenzalvi
+/.cargo/config.toml

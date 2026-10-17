@@ -23,5 +23,7 @@
 //! }
 //!
 
+pub mod earley;
 pub mod grammars;
+pub mod morphology;
 pub mod peg;

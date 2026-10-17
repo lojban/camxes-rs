@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-camxes-rs = "0.1.1"
+camxes-rs = "0.1.6"
 ```
 
 ## 🚦 Quick Start
@@ -79,6 +79,40 @@ The grammar supports these PEG operators:
 | `()`     | Grouping | `(a / b)` |
 | `[]`     | Character range / class | `[abd]` and `[a-zA-Z]` |
 | `.`      | Any character | `.` |
+
+## 🧬 Lojban morphology and the Earley engine
+
+`camxes_rs::morphology::analyze` splits a word or cmavo cluster into words and
+classifies them (cmavo with selma'o, gismu, lujvo, fu'ivla, cmevla):
+
+```rust
+use camxes_rs::morphology::{analyze, Engine};
+
+let m = analyze("lojbo", Engine::Peg).unwrap();
+println!("{:?}", m.words);
+```
+
+With the optional `earley` feature an alternative engine is available:
+
+```toml
+[dependencies]
+camxes-rs = { version = "0.1.6", features = ["earley"] }
+```
+
+`Engine::Earley` runs the same grammar on an Earley chart parser (with PEG
+lookahead and ordered-choice preference) and falls back to the CLL morphology
+of [tergenzalvi](https://github.com/lagleki/tergenzalvi), so it accepts both
+the camxes dialect and the older CLL dialect (obsolete dictionary words such as
+`matriocka` that the PEG engine rejects). For words the PEG accepts, both
+engines return the same segmentation and word classes.
+
+Corpus check and benchmark over all lensisku headwords:
+
+```sh
+cargo test --release --features earley --test dictionary_corpus
+cargo run --release --features earley --example morphology_corpus -- --raw
+python3 scripts/fetch_lensisku_corpus.py   # refresh tests/data
+```
 
 ## 🔍 Debugging
 
