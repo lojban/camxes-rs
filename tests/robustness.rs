@@ -3,9 +3,11 @@
 //! empty, long, random code points, malformed grammars) must give `Ok` or
 //! `Err`. A small deterministic generator replaces a property-testing crate.
 
+#[cfg(feature = "earley")]
 use camxes_rs::earley::EarleyGrammar;
-use camxes_rs::grammars::{LOJBAN_GRAMMAR, LOJBAN_MORPHOLOGY_GRAMMAR};
+use camxes_rs::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
 use camxes_rs::morphology::{self, Engine};
+#[cfg(feature = "peg")]
 use camxes_rs::peg::grammar::Peg;
 use camxes_rs::syntax;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -272,6 +274,7 @@ fn grammar_constructors_never_panic() {
     let mut failures = Vec::new();
     for g in malformed_grammars() {
         for start in ["s", "", "missing", "п"] {
+            #[cfg(feature = "peg")]
             no_panic(&mut failures, "Peg::new", &g, || {
                 if let Ok(peg) = Peg::new(start, &g) {
                     for input in ["", "a", "п", "ab😀", "x\0y"] {
@@ -280,6 +283,7 @@ fn grammar_constructors_never_panic() {
                     }
                 }
             });
+            #[cfg(feature = "earley")]
             no_panic(&mut failures, "EarleyGrammar::new", &g, || {
                 if let Ok(earley) = EarleyGrammar::new(start, &g) {
                     for input in ["", "a", "п", "ab😀", "x\0y"] {
@@ -297,14 +301,18 @@ fn grammar_constructors_never_panic() {
 
 #[test]
 fn embedded_grammars_never_panic() {
-    let peg = Peg::new(LOJBAN_MORPHOLOGY_GRAMMAR.0, LOJBAN_MORPHOLOGY_GRAMMAR.1).unwrap();
-    let earley =
-        EarleyGrammar::new(LOJBAN_MORPHOLOGY_GRAMMAR.0, LOJBAN_MORPHOLOGY_GRAMMAR.1).unwrap();
+    let (start, grammar) = LOJBAN_MORPHOLOGY_GRAMMAR;
+    #[cfg(feature = "peg")]
+    let peg = Peg::new(start, grammar).unwrap();
+    #[cfg(feature = "earley")]
+    let earley = EarleyGrammar::new(start, grammar).unwrap();
     let mut failures = Vec::new();
     for input in adversarial_inputs() {
+        #[cfg(feature = "peg")]
         no_panic(&mut failures, "morphology Peg::parse", &input, || {
             let _ = peg.parse(&input);
         });
+        #[cfg(feature = "earley")]
         if input.chars().count() <= 400 {
             no_panic(&mut failures, "morphology EarleyGrammar", &input, || {
                 let _ = earley.parse(&input);
@@ -313,7 +321,6 @@ fn embedded_grammars_never_panic() {
         }
     }
     assert_none(failures);
-    let _ = LOJBAN_GRAMMAR;
 }
 
 #[test]
@@ -413,8 +420,25 @@ fn vendored_cll_never_panics() {
 /// stack, also on a thread with a small stack.
 #[test]
 fn deep_recursion_is_an_error() {
-    use camxes_rs::peg::parsing::ErrorKind;
     let run = || {
+        #[cfg(feature = "peg")]
+        peg_deep();
+        #[cfg(feature = "earley")]
+        earley_deep();
+    };
+    run();
+    std::thread::Builder::new()
+        .stack_size(512 * 1024)
+        .spawn(run)
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+#[cfg(feature = "peg")]
+fn peg_deep() {
+    use camxes_rs::peg::parsing::ErrorKind;
+    {
         let left = Peg::new("s", "s <- s 'a' / 'a'").unwrap();
         let r = left.parse("aaa");
         assert!(matches!(r.2.as_ref(), Err(e) if matches!(e.error, ErrorKind::RecursionLimit)));
@@ -424,6 +448,13 @@ fn deep_recursion_is_an_error() {
         assert!(matches!(r.2.as_ref(), Err(e) if matches!(e.error, ErrorKind::RecursionLimit)));
         // The same Peg still works afterwards.
         assert_eq!(right.parse("aa").1, 2);
+    }
+}
+
+#[cfg(feature = "earley")]
+fn earley_deep() {
+    use camxes_rs::peg::parsing::ErrorKind;
+    {
         let earley = EarleyGrammar::new("s", "s <- '(' s ')' / 'a'").unwrap();
         assert_eq!(earley.parse("((a))").1, 5);
         let deep = format!("{}a{}", "(".repeat(20_000), ")".repeat(20_000));
@@ -431,12 +462,5 @@ fn deep_recursion_is_an_error() {
         assert!(matches!(r.2.as_ref(), Err(e) if matches!(e.error, ErrorKind::RecursionLimit)));
         assert_eq!(earley.analyze_ends(&deep), (None, false));
         assert_eq!(earley.parse("(a)").1, 3);
-    };
-    run();
-    std::thread::Builder::new()
-        .stack_size(512 * 1024)
-        .spawn(run)
-        .unwrap()
-        .join()
-        .unwrap();
+    }
 }

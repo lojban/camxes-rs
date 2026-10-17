@@ -1,3 +1,4 @@
+#[cfg(feature = "peg")]
 mod core;
 mod display;
 mod types;

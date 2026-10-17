@@ -5,7 +5,7 @@
 //! start rule `text` covers all of it. Parse trees are returned but their
 //! shape is an engine detail (the Earley tree is the derivation it picked).
 //!
-//! * [`Engine::Peg`]: PEG semantics (ordered choice, greedy repetition,
+//! * `Engine::Peg` (feature `peg`): PEG semantics (ordered choice, greedy repetition,
 //!   no backtracking into a committed choice).
 //! * `Engine::Earley` (feature `earley`): first the PEG-preferred
 //!   derivation; if that does not cover the text, any derivation of the
@@ -18,15 +18,15 @@
 //! the quote ends at the first such word, so the quoted text never contains
 //! the delimiter as a separate word; `zoi gy. hello .dy glico` is rejected.
 //! The PEG engine uses a delimiter stack, the Earley engine a quote symbol
-//! (see [`crate::peg`] and [`crate::earley`]); both produce `zoi_open` /
+//! (see `peg` and `earley`); both produce `zoi_open` /
 //! `zoi_word` / `zoi_close` nodes.
 //!
 //! ```rust
 //! use camxes_rs::morphology::Engine;
 //! use camxes_rs::syntax;
 //!
-//! assert!(syntax::accepts("lo gerku cu batci lo mlatu", Engine::Peg));
-//! assert!(!syntax::accepts("lo cu klama", Engine::Peg));
+//! assert!(syntax::accepts("lo gerku cu batci lo mlatu", Engine::default()));
+//! assert!(!syntax::accepts("lo cu klama", Engine::default()));
 //!
 //! for &engine in Engine::available() {
 //!     assert!(syntax::accepts("zoi gy. hello world .gy glico", engine));
@@ -37,9 +37,11 @@
 
 use crate::grammars::LOJBAN_GRAMMAR;
 use crate::morphology::Engine;
+#[cfg(feature = "peg")]
 use crate::peg::grammar::Peg;
 use crate::peg::parsing::ParseNode;
 use std::fmt;
+#[cfg(feature = "earley")]
 use std::sync::OnceLock;
 
 /// Why a text was rejected.
@@ -63,12 +65,14 @@ impl fmt::Display for SyntaxError {
 
 impl std::error::Error for SyntaxError {}
 
+#[cfg(feature = "peg")]
 thread_local! {
     // `Peg` memoizes in a `RefCell`, so keep one parser per thread.
     static PEG: Peg = Peg::new(LOJBAN_GRAMMAR.0, LOJBAN_GRAMMAR.1).expect("embedded Lojban grammar compiles");
 }
 
 /// The camxes syntax grammar compiled for the Earley engine.
+#[cfg(feature = "earley")]
 pub fn earley_grammar() -> &'static crate::earley::EarleyGrammar {
     static G: OnceLock<crate::earley::EarleyGrammar> = OnceLock::new();
     G.get_or_init(|| {
@@ -88,6 +92,7 @@ pub fn parse(input: &str, engine: Engine) -> Result<Vec<ParseNode>, SyntaxError>
         message,
     };
     match engine {
+        #[cfg(feature = "peg")]
         Engine::Peg => {
             let r = PEG.with(|p| p.parse(&text));
             match r.2.as_ref() {

@@ -18,7 +18,7 @@
 //!   After an intended change, regenerate it with
 //!   `CAMXES_BLESS_PARITY=1 cargo test --release --features earley --test dictionary_corpus`
 //!   and review the diff.
-#![cfg(feature = "earley")]
+#![cfg(all(feature = "peg", feature = "earley"))]
 
 use camxes_rs::morphology::{analyze, Dialect, Engine, Morphology, WordClass};
 use flate2::read::GzDecoder;

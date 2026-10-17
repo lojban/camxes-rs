@@ -5,9 +5,10 @@
 [![License: MIT](https://img.shields.io/crates/l/camxes-rs)](LICENSE)
 
 camxes-rs is a PEG parser generator with the camxes Lojban grammars built in,
-plus an optional second engine (Cargo feature `earley`):
+plus an optional second engine. Each engine is a Cargo feature (`peg`, on by
+default, and `earley`); at least one must be enabled:
 
-* **PEG engine** (default) — packrat-style PEG interpreter: ordered choice,
+* **PEG engine** (`peg`, default) — packrat-style PEG interpreter: ordered choice,
   greedy repetition, no backtracking into a committed choice.
 * **Earley engine** (`earley`) — compiles the *same* PEG grammar text into a
   context-free grammar with lookahead symbols and parses it with an Earley
@@ -26,29 +27,35 @@ API documentation: [docs.rs/camxes-rs](https://docs.rs/camxes-rs).
 ```toml
 [dependencies]
 camxes-rs = "2.0.0"                                         # PEG engine only
-# camxes-rs = { version = "2.0.0", features = ["earley"] }  # + Earley / CLL
+# camxes-rs = { version = "2.0.0", features = ["earley"] }  # PEG + Earley / CLL
+# camxes-rs = { version = "2.0.0", default-features = false, features = ["earley"] }  # Earley only
 ```
 
 | Cargo feature | Default | Adds |
 |---------------|---------|------|
-| *(none)*      | yes     | `peg`, `earley::EarleyGrammar` (generic engine), `grammars`, `morphology` with `Engine::Peg`, `syntax` with `Engine::Peg` |
-| `earley`      | no      | `Engine::Earley` for `morphology` and `syntax`, the vendored `cll` module (CLL morphology, cmavo lexicon, Chapter 21 parser) |
+| `peg`         | yes     | the PEG engine (`peg::grammar::Peg`), `Engine::Peg` for `morphology` and `syntax` |
+| `earley`      | no      | the Earley engine (`earley::EarleyGrammar`), `Engine::Earley` for `morphology` and `syntax`, the vendored `cll` module (CLL morphology, cmavo lexicon, Chapter 21 parser) |
 
-The generic `earley::EarleyGrammar` is always compiled; the feature only
-switches on the Lojban `Engine::Earley` and the `cll` module.
+Always compiled: the grammar texts (`grammars`), the engine-independent
+`morphology` and `syntax` APIs, the parse-tree types (`peg::parsing`), the
+grammar AST (`peg::rule::Rule`), the grammar-text reader the Earley engine
+uses, and the stack guard (`peg::stack`). Building with neither feature is a
+compile error. `Engine::default()` is `Engine::Peg` when `peg` is enabled,
+else `Engine::Earley`.
 
 ## Repository layout
 
 | Path | What it is |
 |------|------------|
-| `src/peg/**` | PEG engine: `grammar/` (`Peg::new`, `Peg::parse`, bootstrap grammar of the PEG notation), `rule/` (rule tree and its matcher), `transformer/` (grammar text → rules), `parsing.rs` (`ParseResult`, `ParseNode`, `Span`, errors), `annotations.rs` (`#: PUSH`/`#: PEEK-DIFF`/`#: POP-EQ` handling) |
+| `src/peg/**` | PEG engine: `grammar/` (`Peg::new`, `Peg::parse`, bootstrap grammar of the PEG notation), `rule/` (rule tree and its matcher), `transformer/` (grammar text → rules), `parsing.rs` (`ParseResult`, `ParseNode`, `Span`, errors), `annotations.rs` (`#: PUSH`/`#: PEEK-DIFF`/`#: POP-EQ` handling), `stack.rs` (stack guard), `text.rs` (grammar-text reader used by the Earley engine). Only `grammar/`, `transformer/` and the matcher in `rule/core.rs` need feature `peg`; the rest is shared |
 | `src/grammars.rs` | Embedded PEG grammars: `LOJBAN_MORPHOLOGY_GRAMMAR` (camxes word-level morphology, start `text`), `LOJBAN_GRAMMAR` (full camxes syntax from ilmentufa, start `text`) |
 | `src/earley/mod.rs` | Generic Earley engine API: `EarleyGrammar::new`, `parse`, `parse_complete`, `analyze_ends`, `parse_to_json` |
-| `src/earley/compile.rs` | PEG text → CFG compiler (reuses the PEG front end; adds lookahead and quote symbols, FIRST/nullable sets) |
+| `src/earley/compile.rs` | PEG text → CFG compiler (grammar text read by `src/peg/text.rs`; adds lookahead and quote symbols, FIRST/nullable sets) |
 | `src/earley/recognize.rs` | Earley chart, lookahead sub-recognitions, delimiter-matching quotes, PEG-preferred derivation extraction |
 | `src/morphology/mod.rs` | Engine-independent morphology API and result types (`analyze`, `Morphology`, `MorphWord`, `WordClass`, `WordDialect`, `Dialect`, `Engine`) |
-| `src/morphology/peg.rs` | PEG adapter: `LOJBAN_MORPHOLOGY_GRAMMAR` on the PEG engine, words read off the tree |
-| `src/morphology/earley.rs` | Earley adapter: `LOJBAN_MORPHOLOGY_GRAMMAR` on the Earley engine, then CLL fallback, rule-based standard/obsolete decision |
+| `src/morphology/peg.rs` | PEG adapter (feature `peg`): `LOJBAN_MORPHOLOGY_GRAMMAR` on the PEG engine |
+| `src/morphology/tree.rs` | Words read off a morphology parse tree (both adapters) |
+| `src/morphology/earley.rs` | Earley adapter (feature `earley`): `LOJBAN_MORPHOLOGY_GRAMMAR` on the Earley engine, then CLL fallback, rule-based standard/obsolete decision |
 | `src/syntax.rs` | Whole-text syntax check (`parse`, `accepts`, `earley_grammar`) over `LOJBAN_GRAMMAR` with either engine |
 | `src/cll/**` | Vendored tergenzalvi (feature `earley`): `phonology/` (letters, diphthongs, consonant pair/triple tables, CLL ch. 3), `shapes/` (CV shape recognition), `cfg/` (morphology CFG built in `cfg/grammar.rs` + its Earley recognizer), `constraints/` (CLL ch. 4 filters: tosmabru, slinku'i, cmevla `la` ban, lujvo hyphens, rafsi/fu'ivla, stress, pauses, class exclusion), `lex/` (stream segmentation, tokens), `tables/` (rafsi data), `grammar/` (CLL ch. 21: cmavo lexicon, lexemes, EBNF compiler, Earley parser, elision, SI/SA/SU erasure) |
 | `src/cll/data/cll21.ebnf` | CLL Chapter 21 EBNF grammar (compiled at runtime by `cll::grammar`) |
@@ -111,24 +118,28 @@ equal to the opening delimiter instead of swallowing it.
 `ParseNode::Terminal` nodes with byte spans.
 
 ```rust
-use camxes_rs::peg::grammar::Peg;
+#[cfg(feature = "peg")]
+{
+    use camxes_rs::peg::grammar::Peg;
 
-let grammar = r#"
-expression <- term (('+' / '-') term)*
-term <- factor (('*' / '/') factor)*
-factor <- number / '(' expression ')'
-number <- [0-9]+
-"#;
-let parser = Peg::new("expression", grammar).unwrap();
-let result = parser.parse("2+3*4");
-assert!(result.2.is_ok());
-assert_eq!(result.1, 5); // bytes matched
+    let grammar = r#"
+    expression <- term (('+' / '-') term)*
+    term <- factor (('*' / '/') factor)*
+    factor <- number / '(' expression ')'
+    number <- [0-9]+
+    "#;
+    let parser = Peg::new("expression", grammar).unwrap();
+    let result = parser.parse("2+3*4");
+    assert!(result.2.is_ok());
+    assert_eq!(result.1, 5); // bytes matched
+}
 ```
 
 ### Earley engine (`earley`)
 
-`EarleyGrammar::new` reuses the PEG front end, so it accepts exactly the
-same text, and compiles it to a CFG:
+`EarleyGrammar::new` reads the grammar text with `src/peg/text.rs`, a
+hand-written copy of the PEG engine's grammar reader (a test checks that both
+accept the same text and build the same rules), and compiles it to a CFG:
 
 * `a / b` becomes an *unordered* alternation; `e*`, `e+`, `e?` become
   right-recursive helper nonterminals; literals and classes become byte
@@ -158,12 +169,15 @@ also exists where the PEG committed to a choice that later fails. So the
 Earley engine accepts a superset of what the PEG engine accepts.
 
 ```rust
-use camxes_rs::earley::EarleyGrammar;
+#[cfg(feature = "earley")]
+{
+    use camxes_rs::earley::EarleyGrammar;
 
-// The PEG commits to `'a'` and stops after one byte; Earley finds "abc".
-let g = EarleyGrammar::new("s", "s <- ('a' / 'ab') 'c'?").unwrap();
-assert_eq!(g.parse("abc").1, 1);           // PEG-preferred match
-assert_eq!(g.parse_complete("abc").1, 3);  // derivation covering everything
+    // The PEG commits to `'a'` and stops after one byte; Earley finds "abc".
+    let g = EarleyGrammar::new("s", "s <- ('a' / 'ab') 'c'?").unwrap();
+    assert_eq!(g.parse("abc").1, 1);           // PEG-preferred match
+    assert_eq!(g.parse_complete("abc").1, 3);  // derivation covering everything
+}
 ```
 
 ### CLL morphology and Chapter 21 EBNF (`cll`, feature `earley`)
@@ -236,13 +250,16 @@ same shape for both engines (internal trees are not exposed):
   `render()` (`le/cmavo nu/cmavo klama/gismu`).
 
 ```rust
-use camxes_rs::morphology::{analyze, Dialect, Engine, WordClass};
+#[cfg(feature = "peg")]
+{
+    use camxes_rs::morphology::{analyze, Dialect, Engine, WordClass};
 
-let m = analyze("lenu klama", Engine::Peg).unwrap();
-assert_eq!(m.render(), "le/cmavo nu/cmavo klama/gismu");
-assert_eq!(m.dialect, Dialect::Camxes);
-assert_eq!(m.words[2].class, WordClass::Gismu);
-assert!(analyze("kuarka", Engine::Peg).is_err()); // obsolete form
+    let m = analyze("lenu klama", Engine::Peg).unwrap();
+    assert_eq!(m.render(), "le/cmavo nu/cmavo klama/gismu");
+    assert_eq!(m.dialect, Dialect::Camxes);
+    assert_eq!(m.words[2].class, WordClass::Gismu);
+    assert!(analyze("kuarka", Engine::Peg).is_err()); // obsolete form
+}
 ```
 
 ```rust
@@ -280,9 +297,10 @@ the compiled Earley grammar.
 use camxes_rs::morphology::Engine;
 use camxes_rs::syntax;
 
-assert!(syntax::accepts("lo prenu poi klama cu tavla", Engine::Peg));
-assert!(!syntax::accepts("lo cu klama", Engine::Peg));
-let tree = syntax::parse("mi klama", Engine::Peg).unwrap();
+let engine = Engine::default(); // `Engine::Peg` with the default features
+assert!(syntax::accepts("lo prenu poi klama cu tavla", engine));
+assert!(!syntax::accepts("lo cu klama", engine));
+let tree = syntax::parse("mi klama", engine).unwrap();
 assert!(!tree.is_empty());
 
 // zoi/la'o quotes need the same delimiter word on both sides (both engines).
@@ -321,6 +339,7 @@ PEG result, Earley result, status) to `target/corpus-results.tsv`.
 cargo test                                   # PEG engine
 cargo test --release --features earley       # both engines + corpus parity
 cargo bench [--features earley]              # criterion benchmarks
+cargo test --no-default-features --features earley   # Earley-only build
 python3 scripts/fetch_lensisku_corpus.py     # refresh tests/data from lensisku
 ```
 

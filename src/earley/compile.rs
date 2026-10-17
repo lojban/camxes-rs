@@ -2,7 +2,6 @@
 
 use super::{ByteSet, EarleyGrammar, NtKind, Prod, Quote, Sym};
 use crate::peg::annotations::{strip_annotations, Annotation};
-use crate::peg::grammar::Peg;
 use crate::peg::rule::Rule;
 use std::collections::HashMap;
 use std::fmt;
@@ -279,10 +278,9 @@ impl Builder {
 }
 
 pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, CompileError> {
-    // Reuse the PEG front end (bootstrap grammar + transformer) so both
-    // engines accept identical grammar text.
+    // The shared grammar-text reader: both engines accept identical text.
     let (plain, annotations) = strip_annotations(grammar);
-    let peg = Peg::new(start, &plain).map_err(|e| CompileError(e.to_string()))?;
+    let rules = crate::peg::text::parse_rules(plain.trim()).map_err(CompileError)?;
     let mut b = Builder {
         names: Vec::new(),
         kinds: Vec::new(),
@@ -291,11 +289,11 @@ pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, Compi
         char_ranges: HashMap::new(),
     };
     let start_id = b.named(start);
-    let mut rule_names: Vec<&String> = peg.rules.keys().collect();
+    let mut rule_names: Vec<&String> = rules.keys().collect();
     rule_names.sort();
     for name in rule_names {
         let lhs = b.named(name);
-        let body = &peg.rules[name];
+        let body = &rules[name];
         match body {
             Rule::Choice(alts) => {
                 for alt in alts {

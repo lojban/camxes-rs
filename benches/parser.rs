@@ -3,6 +3,7 @@
 //! `cargo bench` (PEG only) or `cargo bench --features earley`.
 
 use camxes_rs::grammars::LOJBAN_GRAMMAR;
+#[cfg(feature = "peg")]
 use camxes_rs::peg::grammar::Peg;
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::hint::black_box;
@@ -14,6 +15,7 @@ fn medium() -> String {
 }
 
 fn bench_grammar_startup(c: &mut Criterion) {
+    #[cfg(feature = "peg")]
     c.bench_function("peg_new_lojban_grammar", |b| {
         b.iter(|| black_box(Peg::new(LOJBAN_GRAMMAR.0, LOJBAN_GRAMMAR.1).unwrap()))
     });
@@ -28,14 +30,17 @@ fn bench_grammar_startup(c: &mut Criterion) {
 }
 
 fn bench_parse(c: &mut Criterion) {
-    let peg = Peg::new(LOJBAN_GRAMMAR.0, LOJBAN_GRAMMAR.1).unwrap();
     let medium = medium();
-    c.bench_function("peg_parse_short", |b| {
-        b.iter(|| black_box(peg.parse(black_box(SHORT))))
-    });
-    c.bench_function("peg_parse_medium", |b| {
-        b.iter(|| black_box(peg.parse(black_box(medium.as_str()))))
-    });
+    #[cfg(feature = "peg")]
+    {
+        let peg = Peg::new(LOJBAN_GRAMMAR.0, LOJBAN_GRAMMAR.1).unwrap();
+        c.bench_function("peg_parse_short", |b| {
+            b.iter(|| black_box(peg.parse(black_box(SHORT))))
+        });
+        c.bench_function("peg_parse_medium", |b| {
+            b.iter(|| black_box(peg.parse(black_box(medium.as_str()))))
+        });
+    }
     #[cfg(feature = "earley")]
     {
         let earley =

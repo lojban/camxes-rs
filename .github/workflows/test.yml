@@ -1,4 +1,5 @@
-# Unit tests plus the dictionary morphology parity check (PEG vs Earley).
+# Unit tests plus the dictionary morphology parity check (PEG vs Earley),
+# for each engine feature combination.
 name: Test
 
 on:
@@ -12,11 +13,32 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: peg only (default features)
+            features: ""
+          - name: earley only
+            features: "--no-default-features --features earley"
+          - name: all features (incl. tests/dictionary_corpus.rs parity)
+            features: "--all-features"
+    name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: Tests (default features, PEG only)
-        run: cargo test
-      - name: Tests with the Earley engine, incl. tests/dictionary_corpus.rs parity
-        run: cargo test --release --features earley
+        with:
+          key: ${{ matrix.features }}
+      - name: fmt
+        run: cargo fmt --check
+      - name: clippy
+        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
+      - name: tests
+        run: cargo test --release ${{ matrix.features }}
+      - name: docs
+        run: cargo doc --no-deps ${{ matrix.features }}
+        env:
+          RUSTDOCFLAGS: -D warnings

@@ -5,10 +5,11 @@
 //! fu'ivla, cmevla)? Internal trees differ between engines and are not part of
 //! this result.
 //!
-//! * [`Engine::Peg`] (default, always available) runs the camxes-style PEG
-//!   morphology grammar [`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`].
+//! * `Engine::Peg` (Cargo feature `peg`, on by default) runs the
+//!   camxes-style PEG morphology grammar
+//!   [`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`].
 //! * `Engine::Earley` (Cargo feature `earley`) runs the same grammar on the
-//!   [`crate::earley`] engine and falls back to the CLL-grounded CFG/Earley
+//!   `earley` engine and falls back to the CLL-grounded CFG/Earley
 //!   morphology of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
 //!   (vendored as `camxes_rs::cll`). Besides everything the PEG grammar accepts
 //!   it also accepts the older CLL dialect that the PEG rejects (for example
@@ -18,12 +19,15 @@
 //! ```rust
 //! use camxes_rs::morphology::{analyze, Engine, WordClass};
 //!
-//! let m = analyze("lenu klama", Engine::Peg).unwrap();
+//! // `Engine::default()` is `Engine::Peg` when the `peg` feature is on.
+//! let m = analyze("lenu klama", Engine::default()).unwrap();
 //! let shape: Vec<(&str, WordClass)> = m.words.iter().map(|w| (w.text.as_str(), w.class)).collect();
 //! assert_eq!(shape, vec![("le", WordClass::Cmavo), ("nu", WordClass::Cmavo), ("klama", WordClass::Gismu)]);
 //! ```
 
+#[cfg(feature = "peg")]
 mod peg;
+mod tree;
 
 #[cfg(feature = "earley")]
 pub use earley::camxes_morphology_grammar;
@@ -172,17 +176,21 @@ impl Morphology {
 /// Which morphology engine to run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Engine {
-    /// camxes-style PEG grammar (default).
+    /// camxes-style PEG grammar (feature `peg`; the default engine).
+    #[cfg(feature = "peg")]
     #[default]
     Peg,
-    /// tergenzalvi CLL CFG/Earley morphology (feature `earley`).
+    /// tergenzalvi CLL CFG/Earley morphology (feature `earley`; the default
+    /// engine when `peg` is disabled).
     #[cfg(feature = "earley")]
+    #[cfg_attr(not(feature = "peg"), default)]
     Earley,
 }
 
 impl Engine {
     pub fn name(self) -> &'static str {
         match self {
+            #[cfg(feature = "peg")]
             Engine::Peg => "peg",
             #[cfg(feature = "earley")]
             Engine::Earley => "earley",
@@ -191,13 +199,17 @@ impl Engine {
 
     /// All engines compiled into this build.
     pub fn available() -> &'static [Engine] {
-        #[cfg(feature = "earley")]
+        #[cfg(all(feature = "peg", feature = "earley"))]
         {
             &[Engine::Peg, Engine::Earley]
         }
-        #[cfg(not(feature = "earley"))]
+        #[cfg(all(feature = "peg", not(feature = "earley")))]
         {
             &[Engine::Peg]
+        }
+        #[cfg(all(not(feature = "peg"), feature = "earley"))]
+        {
+            &[Engine::Earley]
         }
     }
 }
@@ -206,6 +218,7 @@ impl std::str::FromStr for Engine {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_ascii_lowercase().as_str() {
+            #[cfg(feature = "peg")]
             "peg" | "camxes" => Ok(Engine::Peg),
             #[cfg(feature = "earley")]
             "earley" | "bnf" | "cfg" | "tergenzalvi" => Ok(Engine::Earley),
@@ -245,6 +258,7 @@ impl std::error::Error for MorphologyError {}
 /// Split `input` into words and classify them with the chosen engine.
 pub fn analyze(input: &str, engine: Engine) -> Result<Morphology, MorphologyError> {
     let mut m = match engine {
+        #[cfg(feature = "peg")]
         Engine::Peg => peg::analyze(input)?,
         #[cfg(feature = "earley")]
         Engine::Earley => earley::analyze(input)?,
@@ -293,6 +307,7 @@ pub(crate) fn split_cmavo_cluster(text: &str) -> Vec<(usize, usize)> {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "peg")]
     fn sig(input: &str, engine: Engine) -> Vec<(String, WordClass)> {
         analyze(input, engine)
             .unwrap_or_else(|e| panic!("{input}: {e}"))
@@ -311,6 +326,7 @@ mod tests {
         assert_eq!(split_cmavo_cluster("bybu"), vec![(0, 2), (2, 4)]);
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn peg_basic_classes() {
         use WordClass::*;
@@ -323,19 +339,21 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn peg_rejects_partial() {
         assert!(analyze("klamq", Engine::Peg).is_err());
         assert!(analyze("", Engine::Peg).is_err());
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn engine_from_str() {
         assert_eq!("peg".parse::<Engine>().unwrap(), Engine::Peg);
         assert!("nope".parse::<Engine>().is_err());
     }
 
-    #[cfg(feature = "earley")]
+    #[cfg(all(feature = "peg", feature = "earley"))]
     #[test]
     fn earley_matches_peg_on_common_words() {
         for input in [

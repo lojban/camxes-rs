@@ -14,7 +14,7 @@
 //! 3. **camxes, complete derivation:** last resort, any camxes-grammar
 //!    derivation spanning the whole input.
 
-use super::peg::words_from_tree;
+use super::tree::words_from_tree;
 use super::{
     split_cmavo_cluster, Dialect, MorphWord, Morphology, MorphologyError, WordClass, WordDialect,
 };

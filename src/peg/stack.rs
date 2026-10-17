@@ -1,13 +1,13 @@
 //! Stack guard for the recursive-descent PEG parser.
 //!
 //! Deep input (or a left-recursive rule) makes the parser recurse deeply.
-//! Instead of overflowing the thread's stack, [`Peg::parse`] fails with
+//! Instead of overflowing the thread's stack, a parse (PEG `Peg::parse`,
+//! Earley `EarleyGrammar::parse`) fails with
 //! [`ErrorKind::RecursionLimit`] once the stack pointer gets close to the
 //! end of the current thread's stack. Where the stack bounds can be queried
 //! (Linux glibc/musl, macOS) the whole stack minus a safety margin is used;
 //! elsewhere a fixed [`FALLBACK_STACK_BUDGET`] is allowed.
 //!
-//! [`Peg::parse`]: crate::peg::grammar::Peg::parse
 //! [`ErrorKind::RecursionLimit`]: crate::peg::parsing::ErrorKind::RecursionLimit
 
 use std::cell::Cell;

@@ -28,8 +28,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [features]
-default = []
-# Enable `Engine::Earley` and the vendored tergenzalvi CLL morphology (`cll`).
+default = ["peg"]
+# The PEG engine (`peg::grammar::Peg`, `Engine::Peg`).
+peg = []
+# The Earley engine (`earley`, `Engine::Earley`) and the vendored tergenzalvi
+# CLL morphology (`cll`). At least one of `peg` / `earley` is required.
 earley = []
 
 [dev-dependencies]
@@ -40,11 +43,12 @@ flate2 = "1"
 [[example]]
 name = "cmaxes-test"
 path = "src/examples/cmaxes-test.rs"
+required-features = ["peg"]
 
 [[example]]
 name = "morphology_corpus"
 path = "examples/morphology_corpus.rs"
-required-features = ["earley"]
+required-features = ["peg", "earley"]
 
 [[bench]]
 name = "parser"

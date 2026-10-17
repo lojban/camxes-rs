@@ -101,63 +101,67 @@ mod tests {
         );
     }
 
-    const QUOTE_GRAMMAR: &str = r#"
-    text <- (quote / word) (' '+ (quote / word))* !.
-    quote <- 'Q' ' ' open ' ' (body ' ')* close
-    open <- [a-z']+ #: PUSH
-    body <- [a-z']+ #: PEEK-DIFF
-    close <- [a-z']+ #: POP-EQ
-    word <- [a-z']+
-    "#;
+    #[cfg(feature = "peg")]
+    mod peg_engine {
 
-    fn peg_accepts(input: &str) -> bool {
-        let peg = crate::peg::grammar::Peg::new("text", QUOTE_GRAMMAR).unwrap();
-        let r = peg.parse(input);
-        r.2.is_ok() && r.1 == input.len()
-    }
-
-    #[test]
-    fn peg_quote_needs_matching_delimiters() {
-        assert!(peg_accepts("Q gy hello gy"));
-        assert!(peg_accepts("Q gy hello world gy after"));
-        assert!(peg_accepts("Q gy gy"));
-        assert!(peg_accepts("w Q xu'u a b xuhu w"));
-        assert!(!peg_accepts("Q gy hello dy"));
-        assert!(!peg_accepts("Q gy hello"));
-    }
-
-    #[test]
-    fn peg_quote_ends_at_first_delimiter() {
-        // Without PEEK-DIFF the greedy body would swallow the closing `gy`.
-        let peg = crate::peg::grammar::Peg::new("text", QUOTE_GRAMMAR).unwrap();
-        use crate::peg::parsing::ParseNode;
-        fn close_span(nodes: &[ParseNode]) -> Option<(usize, usize)> {
-            nodes.iter().find_map(|node| match node {
-                ParseNode::NonTerminal { name, span, .. } if name == "close" => {
-                    Some((span.0, span.1))
-                }
-                ParseNode::NonTerminal { children, .. } => close_span(children),
-                ParseNode::Terminal { .. } => None,
-            })
-        }
-        let r = peg.parse("Q gy a gy x gy");
-        assert_eq!(r.1, 14);
-        let nodes = r.2.as_ref().as_ref().unwrap();
-        assert_eq!(close_span(nodes), Some((7, 9)));
-    }
-
-    #[test]
-    fn peg_stack_is_restored_after_failure() {
-        // The first alternative pushes `gy` and then fails; the second one
-        // must see an empty stack, so `gy` is not "equal to the top".
-        let g = r#"
-        s <- open ' ' 'X' / open ' ' close
-        open <- [a-z]+ #: PUSH
-        close <- [a-z]+ #: POP-EQ
+        const QUOTE_GRAMMAR: &str = r#"
+        text <- (quote / word) (' '+ (quote / word))* !.
+        quote <- 'Q' ' ' open ' ' (body ' ')* close
+        open <- [a-z']+ #: PUSH
+        body <- [a-z']+ #: PEEK-DIFF
+        close <- [a-z']+ #: POP-EQ
+        word <- [a-z']+
         "#;
-        let peg = crate::peg::grammar::Peg::new("s", g).unwrap();
-        assert_eq!(peg.parse("gy gy").1, 5);
-        assert!(peg.parse("gy dy").2.is_err());
-        assert!(peg.delimiters.borrow().is_empty());
+
+        fn peg_accepts(input: &str) -> bool {
+            let peg = crate::peg::grammar::Peg::new("text", QUOTE_GRAMMAR).unwrap();
+            let r = peg.parse(input);
+            r.2.is_ok() && r.1 == input.len()
+        }
+
+        #[test]
+        fn peg_quote_needs_matching_delimiters() {
+            assert!(peg_accepts("Q gy hello gy"));
+            assert!(peg_accepts("Q gy hello world gy after"));
+            assert!(peg_accepts("Q gy gy"));
+            assert!(peg_accepts("w Q xu'u a b xuhu w"));
+            assert!(!peg_accepts("Q gy hello dy"));
+            assert!(!peg_accepts("Q gy hello"));
+        }
+
+        #[test]
+        fn peg_quote_ends_at_first_delimiter() {
+            // Without PEEK-DIFF the greedy body would swallow the closing `gy`.
+            let peg = crate::peg::grammar::Peg::new("text", QUOTE_GRAMMAR).unwrap();
+            use crate::peg::parsing::ParseNode;
+            fn close_span(nodes: &[ParseNode]) -> Option<(usize, usize)> {
+                nodes.iter().find_map(|node| match node {
+                    ParseNode::NonTerminal { name, span, .. } if name == "close" => {
+                        Some((span.0, span.1))
+                    }
+                    ParseNode::NonTerminal { children, .. } => close_span(children),
+                    ParseNode::Terminal { .. } => None,
+                })
+            }
+            let r = peg.parse("Q gy a gy x gy");
+            assert_eq!(r.1, 14);
+            let nodes = r.2.as_ref().as_ref().unwrap();
+            assert_eq!(close_span(nodes), Some((7, 9)));
+        }
+
+        #[test]
+        fn peg_stack_is_restored_after_failure() {
+            // The first alternative pushes `gy` and then fails; the second one
+            // must see an empty stack, so `gy` is not "equal to the top".
+            let g = r#"
+            s <- open ' ' 'X' / open ' ' close
+            open <- [a-z]+ #: PUSH
+            close <- [a-z]+ #: POP-EQ
+            "#;
+            let peg = crate::peg::grammar::Peg::new("s", g).unwrap();
+            assert_eq!(peg.parse("gy gy").1, 5);
+            assert!(peg.parse("gy dy").2.is_err());
+            assert!(peg.delimiters.borrow().is_empty());
+        }
     }
 }

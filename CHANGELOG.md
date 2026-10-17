@@ -7,6 +7,18 @@ from a different code base (lojban/tersmu), so this release supersedes it
 with a major bump rather than claiming compatibility with the 1.x API.
 
 ### Added
+- Cargo features per engine: `peg` (default) and `earley` (off by default).
+  A disabled engine is not compiled in: without `peg` there is no
+  `peg::grammar` / `peg::transformer` / PEG matcher and no `Engine::Peg`;
+  without `earley` there is no `earley` module, `cll` module (incl. the
+  embedded `cll21.ebnf` and `cmavo_selmaho.tsv`) or `Engine::Earley`. At
+  least one feature is required (`compile_error!` otherwise).
+  `Engine::default()` is `Engine::Peg`, or `Engine::Earley` in an
+  Earley-only build. Grammar texts (`grammars`), tree types
+  (`peg::parsing`), `peg::rule::Rule` and `peg::stack` are shared. The
+  Earley engine reads grammar text with its own reader (`peg::text`, a test
+  checks it agrees with the PEG engine's), so it no longer needs the PEG
+  engine.
 - `morphology` module: engine-independent Lojban morphology API
   (`morphology::analyze(input, Engine)`) returning a normalized `Morphology`
   (word segmentation, `WordClass` — cmavo / gismu / lujvo / fu'ivla / cmevla —

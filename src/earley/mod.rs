@@ -1,12 +1,12 @@
 //! Earley engine for camxes-rs grammars — an alternative to the PEG engine.
 //!
 //! [`EarleyGrammar::new`] accepts exactly the grammar text that
-//! [`Peg::new`](crate::peg::grammar::Peg::new) accepts and compiles it to a
+//! `Peg::new` accepts and compiles it to a
 //! context-free grammar extended with zero-width lookahead predicates:
 //!
 //! * `a / b` becomes an (unordered) alternation; `X*`, `X+`, `X?` become
-//!   right-recursive helper nonterminals; literals, classes, ranges and `.`
-//!   become byte terminals.
+//!   right-recursive helper nonterminals; literals and classes become byte
+//!   terminals; `.` and ranges match one whole character.
 //! * `&X` / `!X` become lookahead symbols. They are decided by a separate
 //!   Earley recognition of `X` from the current position ("does `X` derive
 //!   some prefix of the remaining input?"), memoized per `(X, position)`.
@@ -111,7 +111,7 @@ pub(crate) struct Prod {
 }
 
 /// A camxes-rs grammar compiled for the Earley engine. Unlike
-/// [`Peg`](crate::peg::grammar::Peg) it holds no per-parse state, so it is
+/// `Peg` it holds no per-parse state, so it is
 /// `Send + Sync` and can be shared between threads.
 #[derive(Clone, Debug)]
 pub struct EarleyGrammar {
@@ -148,7 +148,7 @@ impl EarleyGrammar {
         self.prods.len()
     }
 
-    /// Parse like [`Peg::parse`](crate::peg::grammar::Peg::parse): the start
+    /// Parse like `Peg::parse`: the start
     /// rule is matched against a prefix of `input`, preferring the
     /// PEG-preferred derivation. `ParseResult.1` is the end of that match.
     pub fn parse(&self, input: &str) -> ParseResult {
@@ -201,7 +201,7 @@ impl EarleyGrammar {
     }
 
     /// Serialize [`parse`](Self::parse) output as pretty JSON (same shape as
-    /// [`Peg::parse_to_json`](crate::peg::grammar::Peg::parse_to_json)).
+    /// `Peg::parse_to_json`).
     pub fn parse_to_json(&self, input: &str) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(&self.parse(input))
     }
@@ -245,6 +245,7 @@ impl EarleyGrammar {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "peg")]
     use crate::peg::grammar::Peg;
     use crate::peg::parsing::ParseNode;
 
@@ -265,6 +266,7 @@ mod tests {
             .join(" ")
     }
 
+    #[cfg(feature = "peg")]
     fn same_as_peg(start: &str, grammar: &str, inputs: &[&str]) {
         let peg = Peg::new(start, grammar).unwrap();
         let earley = EarleyGrammar::new(start, grammar).unwrap();
@@ -282,6 +284,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn calculator_matches_peg() {
         let g = r#"
@@ -298,6 +301,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn lookahead_and_literals() {
         let g = r#"
@@ -311,6 +315,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn no_backtracking_into_a_matched_nonterminal() {
         // PEG: `x` greedily matches "aa", the first alternative then fails
@@ -323,6 +328,7 @@ mod tests {
         same_as_peg("s", g, &["aab", "aaab", "aabc", "ab"]);
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn non_ascii_input_does_not_panic() {
         // Grammar text stays ASCII; the input has multi-byte characters.
@@ -330,6 +336,7 @@ mod tests {
         same_as_peg("s", g, &["пb", "п", "abc", "xп", "ж"]);
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn non_ascii_grammar_text_matches_peg() {
         // `.` and ranges match whole characters in both engines.
@@ -400,6 +407,7 @@ mod tests {
         assert!(shape(nodes).contains("close[7-9]"), "{}", shape(nodes));
     }
 
+    #[cfg(feature = "peg")]
     #[test]
     fn quotes_agree_with_peg_engine() {
         let peg = Peg::new("text", QUOTE_GRAMMAR).unwrap();
