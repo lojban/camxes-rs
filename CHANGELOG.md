@@ -17,9 +17,15 @@
   CLL morphology.
 - `grammars::LOJBAN_MORPHOLOGY_GRAMMAR` (previously only in the example).
 - Dictionary corpus test (`tests/dictionary_corpus.rs`) over all lensisku
-  English headwords (`tests/data/lensisku-en-words.tsv.gz`, refreshed with
+  English headwords, excluding `wiki` page-title entries
+  (`tests/data/lensisku-en-words.tsv.gz`, refreshed with
   `scripts/fetch_lensisku_corpus.py`) and `examples/morphology_corpus.rs` for
-  agreement reports and benchmarks (`--raw` times the bare grammar engines).
+  agreement reports and benchmarks (`--raw` times the bare grammar engines);
+  it also writes a per-word report to `target/corpus-results.tsv`.
+- `tests/data/morphology-parity.tsv`: committed expected morphology (words,
+  classes, selma'o) and PEG/Earley acceptance for every headword; the corpus
+  test fails if either engine deviates. CI workflow `.github/workflows/test.yml`
+  runs it with `--features earley`.
 
 ### Fixed
 - `Peg::new` panicked on grammar text with leading whitespace.

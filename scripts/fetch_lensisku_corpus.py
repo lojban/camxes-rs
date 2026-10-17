@@ -13,6 +13,9 @@ Sources (public, no auth; see https://lensisku.lojban.org/swagger-ui/openapi.jso
 Output: tests/data/lensisku-en-words.tsv.gz with columns
   word<TAB>word_type<TAB>in_cached_export(0/1)
 sorted by word, one row per distinct headword.
+
+Entries of word_type `wiki` (English page titles, not Lojban words) are
+excluded and never written to the fixture.
 """
 import gzip
 import json
@@ -23,6 +26,7 @@ import urllib.request
 
 BASE = "https://lensisku.lojban.org/api"
 OUT = os.path.join(os.path.dirname(__file__), "..", "tests", "data", "lensisku-en-words.tsv.gz")
+EXCLUDED_TYPES = {"wiki"}
 UA = {"User-Agent": "camxes-rs corpus fetcher"}
 
 
@@ -42,6 +46,8 @@ def main():
     words = {}  # word -> [type, in_cached]
     cached = get_json(f"{BASE}/export/cached/en/json")
     for e in cached:
+        if e["word_type"] in EXCLUDED_TYPES:
+            continue
         words[e["word"]] = [e["word_type"], 1]
     print(f"cached export: {len(cached)} entries", file=sys.stderr)
 
@@ -55,6 +61,8 @@ def main():
         for x in defs:
             seen.add(x["definitionid"])
             w = x["valsiword"]
+            if x["type_name"] in EXCLUDED_TYPES:
+                continue
             if w not in words:
                 words[w] = [x["type_name"], 0]
         print(f"page {page}: {len(seen)}/{total}", file=sys.stderr)

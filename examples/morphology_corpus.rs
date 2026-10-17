@@ -23,6 +23,8 @@ fn load(path: &str) -> Vec<(String, String)> {
             let mut c = l.split('\t');
             Some((c.next()?.to_string(), c.next()?.to_string()))
         })
+        // `wiki` entries are English page titles, not Lojban headwords.
+        .filter(|(_, t)| t != "wiki")
         .collect()
 }
 
@@ -63,6 +65,12 @@ fn main() {
     let mut disagree = vec![];
     let mut earley_fail = vec![];
     let mut peg_only_rej = vec![];
+    // Full per-word report: one row per headword.
+    let mut results = vec!["word\tword_type\tpeg\tearley\tstatus\tearley_dialect".to_string()];
+    let cell = |r: &Result<Morphology, MorphologyError>| match r {
+        Ok(m) => m.render(),
+        Err(err) => format!("ERR {err}").replace(['\t', '\n'], " "),
+    };
     for (word, ty) in &entries {
         let (p, dp) = timed(word, Engine::Peg);
         let (e, de) = timed(word, Engine::Earley);
@@ -90,6 +98,18 @@ fn main() {
             }
             _ => {}
         }
+        let status = match (&p, &e) {
+            (Ok(pm), Ok(em)) if pm.signature() == em.signature() => "agree",
+            (Ok(_), _) => "disagree",
+            (Err(_), Ok(_)) => "earley-only",
+            (Err(_), Err(_)) => "both-reject",
+        };
+        results.push(format!(
+            "{word}\t{ty}\t{}\t{}\t{status}\t{}",
+            cell(&p),
+            cell(&e),
+            e.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_default()
+        ));
         if let Err(err) = &e {
             earley_fail.push(format!(
                 "{word}\t{ty}\tpeg: {}\t{err}",
@@ -115,8 +135,8 @@ fn main() {
         te,
         n as f64 / te.as_secs_f64()
     );
-    slow_p.sort_by(|a, b| b.0.cmp(&a.0));
-    slow_e.sort_by(|a, b| b.0.cmp(&a.0));
+    slow_p.sort_by_key(|a| std::cmp::Reverse(a.0));
+    slow_e.sort_by_key(|a| std::cmp::Reverse(a.0));
     println!("slowest peg: {:?}", &slow_p[..5.min(n)]);
     println!("slowest earley: {:?}", &slow_e[..5.min(n)]);
     let dump = |name: &str, v: &Vec<String>| {
@@ -127,6 +147,9 @@ fn main() {
     dump("disagree", &disagree);
     dump("earley-fail", &earley_fail);
     dump("peg-rejected-earley-ok", &peg_only_rej);
+    let out = format!("{}/target/corpus-results.tsv", env!("CARGO_MANIFEST_DIR"));
+    std::fs::write(&out, results.join("\n") + "\n").unwrap();
+    println!("results: {} headwords (written to {out})", results.len() - 1);
 }
 
 /// Same grammar, both engines, no adapters or fallbacks.
@@ -173,7 +196,7 @@ fn raw_grammar_timing(entries: &[(String, String)]) {
             (t.elapsed(), i.as_str())
         })
         .collect();
-    worst.sort_by(|a, b| b.0.cmp(&a.0));
+    worst.sort_by_key(|a| std::cmp::Reverse(a.0));
     println!("raw grammar on {} inputs ({} bytes)", inputs.len(), bytes);
     println!("  peg    {:?}  ({:.0} inputs/s, {:.0} KB/s)", tp, inputs.len() as f64 / tp.as_secs_f64(), bytes as f64 / 1024.0 / tp.as_secs_f64());
     println!("  earley {:?}  ({:.0} inputs/s, {:.0} KB/s)", te, inputs.len() as f64 / te.as_secs_f64(), bytes as f64 / 1024.0 / te.as_secs_f64());

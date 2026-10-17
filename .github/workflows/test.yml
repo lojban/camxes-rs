@@ -1,0 +1,22 @@
+# Unit tests plus the dictionary morphology parity check (PEG vs Earley).
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tests (default features, PEG only)
+        run: cargo test
+      - name: Tests with the Earley engine, incl. tests/dictionary_corpus.rs parity
+        run: cargo test --release --features earley

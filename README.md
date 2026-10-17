@@ -106,13 +106,21 @@ the camxes dialect and the older CLL dialect (obsolete dictionary words such as
 `matriocka` that the PEG engine rejects). For words the PEG accepts, both
 engines return the same segmentation and word classes.
 
-Corpus check and benchmark over all lensisku headwords:
+Corpus check and benchmark over all lensisku headwords (`wiki` page-title
+entries are excluded):
 
 ```sh
 cargo test --release --features earley --test dictionary_corpus
 cargo run --release --features earley --example morphology_corpus -- --raw
 python3 scripts/fetch_lensisku_corpus.py   # refresh tests/data
 ```
+
+`tests/data/morphology-parity.tsv` documents the expected morphology and each
+engine's acceptance for every headword; the test asserts both engines match it.
+After an intended change, regenerate it with
+`CAMXES_BLESS_PARITY=1 cargo test --release --features earley --test dictionary_corpus`
+and review the diff. The example also writes a per-word report to
+`target/corpus-results.tsv`.
 
 ## 🔍 Debugging
 
