@@ -1,6 +1,8 @@
 //! PEG engine adapter: camxes-style morphology grammar → [`Morphology`].
 
-use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass, WordDialect};
+use super::{
+    split_cmavo_cluster, Dialect, MorphWord, Morphology, MorphologyError, WordClass, WordDialect,
+};
 use crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
 use crate::peg::grammar::Peg;
 use crate::peg::parsing::ParseNode;
@@ -44,13 +46,20 @@ pub(super) fn analyze(input: &str) -> Result<Morphology, MorphologyError> {
 
 /// Read the word sequence off a `LOJBAN_MORPHOLOGY_GRAMMAR` parse tree (from
 /// either engine). `input` is the original text (same byte offsets).
-pub(super) fn words_from_tree(nodes: &[ParseNode], input: &str) -> Result<Vec<MorphWord>, (usize, String)> {
+pub(super) fn words_from_tree(
+    nodes: &[ParseNode],
+    input: &str,
+) -> Result<Vec<MorphWord>, (usize, String)> {
     let mut words = Vec::new();
     collect(nodes, input, &mut words)?;
     Ok(words)
 }
 
-fn collect(nodes: &[ParseNode], input: &str, out: &mut Vec<MorphWord>) -> Result<(), (usize, String)> {
+fn collect(
+    nodes: &[ParseNode],
+    input: &str,
+    out: &mut Vec<MorphWord>,
+) -> Result<(), (usize, String)> {
     for node in nodes {
         let ParseNode::NonTerminal { name, children, .. } = node else {
             continue;
@@ -59,7 +68,9 @@ fn collect(nodes: &[ParseNode], input: &str, out: &mut Vec<MorphWord>) -> Result
             collect(children, input, out)?;
             continue;
         }
-        let Some(ParseNode::NonTerminal { name: kind, span, .. }) = children
+        let Some(ParseNode::NonTerminal {
+            name: kind, span, ..
+        }) = children
             .iter()
             .find(|c| matches!(c, ParseNode::NonTerminal { .. }))
         else {

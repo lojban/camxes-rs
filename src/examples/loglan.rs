@@ -2,7 +2,6 @@ use camxes_rs::{grammars::LOGLAN_GRAMMAR, peg::grammar::Peg};
 use std::time::Instant;
 
 fn main() {
-    use env_logger;
     env_logger::builder().init();
 
     let (start, grammar) = LOGLAN_GRAMMAR;

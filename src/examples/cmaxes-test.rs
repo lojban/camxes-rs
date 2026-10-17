@@ -32,7 +32,11 @@ fn lujvo_segments(input: &str, nodes: &[ParseNode]) -> Option<Vec<String>> {
 
     for node in children {
         match node {
-            ParseNode::NonTerminal { name, span, children: sub } => {
+            ParseNode::NonTerminal {
+                name,
+                span,
+                children: sub,
+            } => {
                 let (s, e) = (span.0, span.1);
                 if s >= e || e > input.len() {
                     continue;
@@ -44,7 +48,12 @@ fn lujvo_segments(input: &str, nodes: &[ParseNode]) -> Option<Vec<String>> {
                     let mut rafsi_end = s;
                     let mut hy_start = e;
                     for n in sub {
-                        if let ParseNode::NonTerminal { name: nname, span: nspan, .. } = n {
+                        if let ParseNode::NonTerminal {
+                            name: nname,
+                            span: nspan,
+                            ..
+                        } = n
+                        {
                             let (ns, ne) = (nspan.0, nspan.1);
                             if nname == "fuhivla_trim" {
                                 rafsi_end = ne;
@@ -53,10 +62,8 @@ fn lujvo_segments(input: &str, nodes: &[ParseNode]) -> Option<Vec<String>> {
                                 // (fuhivla_trim onset)(y) form: include onset in rafsi (e.g. arb + y)
                                 rafsi_end = rafsi_end.max(ne);
                             }
-                            if nname == "h" || nname == "y" {
-                                if ns < hy_start {
-                                    hy_start = ns;
-                                }
+                            if (nname == "h" || nname == "y") && ns < hy_start {
+                                hy_start = ns;
                             }
                         }
                     }
@@ -71,17 +78,18 @@ fn lujvo_segments(input: &str, nodes: &[ParseNode]) -> Option<Vec<String>> {
                     let mut rafsi_end = s;
                     let mut hy_start = e;
                     for n in sub {
-                        if let ParseNode::NonTerminal { name: nname, span: nspan, .. } = n {
+                        if let ParseNode::NonTerminal {
+                            name: nname,
+                            span: nspan,
+                            ..
+                        } = n
+                        {
                             let (ns, ne) = (nspan.0, nspan.1);
-                            if nname != "h" && nname != "y" {
-                                if ne > rafsi_end {
-                                    rafsi_end = ne;
-                                }
+                            if nname != "h" && nname != "y" && ne > rafsi_end {
+                                rafsi_end = ne;
                             }
-                            if nname == "h" || nname == "y" {
-                                if ns < hy_start {
-                                    hy_start = ns;
-                                }
+                            if (nname == "h" || nname == "y") && ns < hy_start {
+                                hy_start = ns;
                             }
                         }
                     }
@@ -107,7 +115,11 @@ fn lujvo_segments(input: &str, nodes: &[ParseNode]) -> Option<Vec<String>> {
 fn first_word_span(nodes: &[ParseNode]) -> Option<(usize, usize)> {
     for node in nodes {
         match node {
-            ParseNode::NonTerminal { name, span, children } => {
+            ParseNode::NonTerminal {
+                name,
+                span,
+                children,
+            } => {
                 if name == "any_word" {
                     return Some((span.0, span.1));
                 }
@@ -178,7 +190,11 @@ fn main() {
         let expected_str = match cols.next() {
             Some(s) => s.trim(),
             None => {
-                eprintln!("{}:{}: missing expected column", tsv_path.display(), line_no);
+                eprintln!(
+                    "{}:{}: missing expected column",
+                    tsv_path.display(),
+                    line_no
+                );
                 failed += 1;
                 continue;
             }
@@ -188,7 +204,10 @@ fn main() {
             continue; // header
         }
 
-        let expected: Vec<String> = expected_str.split('+').map(|s| s.trim().to_string()).collect();
+        let expected: Vec<String> = expected_str
+            .split('+')
+            .map(|s| s.trim().to_string())
+            .collect();
 
         // Parse with a trailing space so text <- any_word+ can end with pause
         let input = format!("{} ", lujvo);
@@ -199,14 +218,25 @@ fn main() {
                 let actual = match get_segments(&input, nodes) {
                     Some(segments) => segments,
                     None => {
-                        println!("FAIL {}:{}  {}  (no segments)", tsv_path.display(), line_no, lujvo);
+                        println!(
+                            "FAIL {}:{}  {}  (no segments)",
+                            tsv_path.display(),
+                            line_no,
+                            lujvo
+                        );
                         failed += 1;
                         continue;
                     }
                 };
 
                 if actual == expected {
-                    println!("PASS {}:{}  {}  =>  {}", tsv_path.display(), line_no, lujvo, expected_str);
+                    println!(
+                        "PASS {}:{}  {}  =>  {}",
+                        tsv_path.display(),
+                        line_no,
+                        lujvo,
+                        expected_str
+                    );
                     passed += 1;
                 } else {
                     println!(
@@ -221,7 +251,13 @@ fn main() {
                 }
             }
             Err(e) => {
-                println!("FAIL {}:{}  {}  parse error: {}", tsv_path.display(), line_no, lujvo, e);
+                println!(
+                    "FAIL {}:{}  {}  parse error: {}",
+                    tsv_path.display(),
+                    line_no,
+                    lujvo,
+                    e
+                );
                 failed += 1;
             }
         }

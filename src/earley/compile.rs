@@ -125,7 +125,8 @@ impl Builder {
                     Sym::T(set)
                 } else {
                     // PEG tries longer members first.
-                    let mut alts: Vec<Vec<u8>> = members.iter().map(|m| m.as_bytes().to_vec()).collect();
+                    let mut alts: Vec<Vec<u8>> =
+                        members.iter().map(|m| m.as_bytes().to_vec()).collect();
                     alts.sort_by(|x, y| y.len().cmp(&x.len()).then(x.cmp(y)));
                     Sym::N(self.bytes_nt(alts, NtKind::Literal))
                 }
@@ -236,7 +237,10 @@ pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, Compi
 }
 
 /// FIRST byte sets and (conservative) nullability by fixpoint iteration.
-fn first_sets(nt_count: usize, prods: &[Prod]) -> (Vec<ByteSet>, Vec<bool>, Vec<ByteSet>, Vec<bool>) {
+fn first_sets(
+    nt_count: usize,
+    prods: &[Prod],
+) -> (Vec<ByteSet>, Vec<bool>, Vec<ByteSet>, Vec<bool>) {
     let mut nt_first = vec![ByteSet::EMPTY; nt_count];
     let mut nt_nullable = vec![false; nt_count];
     let mut prod_first = vec![ByteSet::EMPTY; prods.len()];

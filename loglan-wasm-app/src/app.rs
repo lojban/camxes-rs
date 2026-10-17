@@ -81,7 +81,10 @@ pub fn app() -> Html {
             let input = (*input_text_handle).clone();
             match get_or_init_peg() {
                 Ok(peg) => {
-                    info!("Parsing input: '{}' with format: {:?}", input, *output_format_handle);
+                    info!(
+                        "Parsing input: '{}' with format: {:?}",
+                        input, *output_format_handle
+                    );
                     let result_str = match *output_format_handle {
                         OutputFormat::Debug => {
                             let result = peg.parse(&input);
@@ -114,8 +117,8 @@ pub fn app() -> Html {
         Callback::from(move |_| {
             let result_text = (*parse_result_handle).clone(); // Clone AttrValue
             let button_text_handle = copy_button_text_handle.clone();
-            if let Some(clipboard) = web_sys::window()
-                .and_then(|win| Some(win.navigator().clipboard()))
+            if let Some(clipboard) =
+                web_sys::window().and_then(|win| Some(win.navigator().clipboard()))
             {
                 let promise = clipboard.write_text(&result_text);
                 spawn_local(async move {
@@ -139,7 +142,7 @@ pub fn app() -> Html {
             } else {
                 error!("Clipboard API not available.");
                 button_text_handle.set(AttrValue::from("No API"));
-                 // Reset button text after a delay
+                // Reset button text after a delay
                 let button_text_handle_clone = button_text_handle.clone();
                 spawn_local(async move {
                     TimeoutFuture::new(1500).await;

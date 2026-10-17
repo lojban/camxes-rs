@@ -8,7 +8,9 @@ pub struct Span(pub usize, pub usize);
 #[derive(Clone, Debug, Serialize)] // Add Serialize
 #[serde(tag = "type")] // Use tagged enum representation for clarity in JSON
 pub enum ParseNode {
-    Terminal { span: Span },
+    Terminal {
+        span: Span,
+    },
     NonTerminal {
         name: String,
         span: Span,
@@ -18,7 +20,11 @@ pub enum ParseNode {
 
 /// Parse result: (cost, position, payload). Payload is Arc-wrapped so cloning is cheap (memo cache).
 #[derive(Clone)]
-pub struct ParseResult(pub u32, pub usize, pub Arc<Result<Vec<ParseNode>, ParseError>>);
+pub struct ParseResult(
+    pub u32,
+    pub usize,
+    pub Arc<Result<Vec<ParseNode>, ParseError>>,
+);
 
 impl std::fmt::Debug for ParseResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -51,7 +57,6 @@ impl Serialize for ParseResult {
         .serialize(serializer)
     }
 }
-
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "kind")]

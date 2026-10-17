@@ -2,7 +2,8 @@
 
 use camxes_rs::grammars::LOGLAN_GRAMMAR;
 use camxes_rs::peg::grammar::Peg;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 fn bench_grammar_startup(c: &mut Criterion) {
     c.bench_function("peg_new_loglan_grammar", |b| {

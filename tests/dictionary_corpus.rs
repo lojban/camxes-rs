@@ -26,7 +26,10 @@ use std::collections::BTreeSet;
 use std::io::Read;
 use std::sync::OnceLock;
 
-const PARITY_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/morphology-parity.tsv");
+const PARITY_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/data/morphology-parity.tsv"
+);
 const PARITY_HEADER: &str =
     "word\tword_type\texpected_morphology\tpeg\tearley\tearley_source\tdialect\tlabel_check";
 
@@ -35,12 +38,18 @@ const PARITY_HEADER: &str =
 const INVALID_EVERYWHERE: &[(&str, &str)] = &[
     ("cipnrbuteo", "vowel hiatus `eo` without apostrophe"),
     ("etreo", "vowel hiatus `eo` without apostrophe"),
-    ("fiprpseudoskafirinku", "vowel hiatus `eu` without apostrophe"),
+    (
+        "fiprpseudoskafirinku",
+        "vowel hiatus `eu` without apostrophe",
+    ),
     ("fiprtetrapleurodo", "vowel hiatus `eu` without apostrophe"),
     ("freskeo", "vowel hiatus `eo` without apostrophe"),
     ("gaurkihu", "`h` is not a Lojban letter"),
     ("ku'urpicea", "vowel hiatus `ea` without apostrophe"),
-    ("kuaidzi", "no consonant cluster in the first five letters (not a brivla)"),
+    (
+        "kuaidzi",
+        "no consonant cluster in the first five letters (not a brivla)",
+    ),
     ("ma;u", "`;` is not Lojban orthography"),
     ("nuhempcr", "`h` is not a Lojban letter"),
     ("posytmo", "`y` inside a fu'ivla"),
@@ -60,7 +69,10 @@ struct Entry {
 }
 
 fn corpus() -> Vec<Entry> {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/lensisku-en-words.tsv.gz");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/data/lensisku-en-words.tsv.gz"
+    );
     let mut text = String::new();
     GzDecoder::new(std::fs::File::open(path).expect("corpus file"))
         .read_to_string(&mut text)
@@ -100,7 +112,10 @@ fn analyze_all(entries: &[Entry]) -> Vec<Outcome> {
                 })
             })
             .collect();
-        handles.into_iter().flat_map(|h| h.join().unwrap()).collect()
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
     })
 }
 
@@ -164,7 +179,10 @@ fn parity_row(e: &Entry, (peg, earley): &Outcome) -> String {
         (Some(m), Some(x)) if &render_full(m) == x => "ok",
         (Some(_), _) => "differs",
     };
-    let source = earley.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_else(|| "-".into());
+    let source = earley
+        .as_ref()
+        .map(|m| format!("{:?}", m.dialect))
+        .unwrap_or_else(|| "-".into());
     let dialect = earley.as_ref().map(dialect_of);
     format!(
         "{}\t{}\t{}\t{}\t{earley_status}\t{source}\t{}\t{}",
@@ -180,7 +198,11 @@ fn parity_row(e: &Entry, (peg, earley): &Outcome) -> String {
 #[test]
 fn morphology_parity_matches_committed_expectations() {
     let (entries, outcomes) = corpus_outcomes();
-    let actual: Vec<String> = entries.iter().zip(outcomes).map(|(e, o)| parity_row(e, o)).collect();
+    let actual: Vec<String> = entries
+        .iter()
+        .zip(outcomes)
+        .map(|(e, o)| parity_row(e, o))
+        .collect();
     if std::env::var_os("CAMXES_BLESS_PARITY").is_some() {
         let mut text = String::from(PARITY_HEADER);
         for row in &actual {
@@ -195,7 +217,11 @@ fn morphology_parity_matches_committed_expectations() {
     let mut lines = committed.lines();
     assert_eq!(lines.next(), Some(PARITY_HEADER));
     let expected: Vec<&str> = lines.collect();
-    assert_eq!(expected.len(), actual.len(), "parity file and corpus differ in size");
+    assert_eq!(
+        expected.len(),
+        actual.len(),
+        "parity file and corpus differ in size"
+    );
     let mismatches: Vec<String> = expected
         .iter()
         .zip(&actual)
@@ -206,7 +232,12 @@ fn morphology_parity_matches_committed_expectations() {
         mismatches.is_empty(),
         "{} parity mismatches (first 50):\n{}",
         mismatches.len(),
-        mismatches.iter().take(50).cloned().collect::<Vec<_>>().join("\n")
+        mismatches
+            .iter()
+            .take(50)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
     );
     assert!(!actual.iter().any(|r| r.contains("\tdiffers\t")));
 }
@@ -221,7 +252,12 @@ fn obsolete_dialect_is_rule_based() {
     for (e, (peg, earley)) in entries.iter().zip(outcomes) {
         let Some(m) = earley else { continue };
         if peg.is_some() == m.has_obsolete() {
-            bad.push(format!("{} (peg ok: {}): {}", e.word, peg.is_some(), render_full(m)));
+            bad.push(format!(
+                "{} (peg ok: {}): {}",
+                e.word,
+                peg.is_some(),
+                render_full(m)
+            ));
         }
         match label_check(&e.word_type, Some(dialect_of(m))) {
             "labeled-obsolete-form-standard" => obs_std.push(e.word.as_str()),
@@ -238,13 +274,21 @@ fn obsolete_dialect_is_rule_based() {
         std_obs.len(),
         std_obs
     );
-    assert!(bad.is_empty(), "dialect does not follow the standard rules:\n{}", bad.join("\n"));
+    assert!(
+        bad.is_empty(),
+        "dialect does not follow the standard rules:\n{}",
+        bad.join("\n")
+    );
 }
 
 #[test]
 fn dictionary_headwords_morphology() {
     let (entries, outcomes) = corpus_outcomes();
-    assert!(entries.len() > 30_000, "corpus too small: {}", entries.len());
+    assert!(
+        entries.len() > 30_000,
+        "corpus too small: {}",
+        entries.len()
+    );
 
     let invalid: BTreeSet<&str> = INVALID_EVERYWHERE.iter().map(|(w, _)| *w).collect();
     let (mut peg_ok, mut agree, mut earley_only) = (0, 0, 0);
@@ -265,7 +309,12 @@ fn dictionary_headwords_morphology() {
                 if p.signature() == q.signature() {
                     agree += 1;
                 } else {
-                    disagreements.push(format!("{}: peg [{}] earley [{}]", e.word, p.render(), q.render()));
+                    disagreements.push(format!(
+                        "{}: peg [{}] earley [{}]",
+                        e.word,
+                        p.render(),
+                        q.render()
+                    ));
                 }
             }
             (Some(p), None) => {
@@ -291,14 +340,22 @@ fn dictionary_headwords_morphology() {
          Earley-only {earley_only}; obsolete {obsolete} (PEG {obsolete_peg}, Earley {obsolete_earley})",
         entries.len()
     );
-    assert!(disagreements.is_empty(), "{} disagreements:\n{}", disagreements.len(), disagreements.join("\n"));
+    assert!(
+        disagreements.is_empty(),
+        "{} disagreements:\n{}",
+        disagreements.len(),
+        disagreements.join("\n")
+    );
     assert!(
         unexpected_failures.is_empty(),
         "Earley rejected {} headwords:\n{}",
         unexpected_failures.len(),
         unexpected_failures.join("\n")
     );
-    assert!(stale_invalid.is_empty(), "now accepted, drop from INVALID_EVERYWHERE: {stale_invalid:?}");
+    assert!(
+        stale_invalid.is_empty(),
+        "now accepted, drop from INVALID_EVERYWHERE: {stale_invalid:?}"
+    );
     assert_eq!(peg_ok, agree);
 }
 
@@ -337,17 +394,31 @@ fn made_up_obsolete_words_are_flagged() {
         // on-glide diphthong in a name
         ("tiuanJOUS", vec![("tiuanJOUS", Cmevla, true)]),
         // zei-lujvo: only the obsolete component is flagged
-        ("lojbo zei kuarbli", vec![("lojbo", Gismu, false), ("zei", Cmavo, false), ("kuarbli", Fuhivla, true)]),
+        (
+            "lojbo zei kuarbli",
+            vec![
+                ("lojbo", Gismu, false),
+                ("zei", Cmavo, false),
+                ("kuarbli", Fuhivla, true),
+            ],
+        ),
         // standard made-up words stay standard
         ("pluviobasu", vec![("pluviobasu", Fuhivla, false)]),
         ("zbanunkla", vec![("zbanunkla", Lujvo, false)]),
         ("blaxi", vec![("blaxi", Gismu, false)]),
     ] {
         let m = analyze(input, Engine::Earley).unwrap_or_else(|e| panic!("{input}: {e}"));
-        let got: Vec<(&str, WordClass, bool)> =
-            m.words.iter().map(|w| (w.text.as_str(), w.class, w.is_obsolete())).collect();
+        let got: Vec<(&str, WordClass, bool)> = m
+            .words
+            .iter()
+            .map(|w| (w.text.as_str(), w.class, w.is_obsolete()))
+            .collect();
         assert_eq!(got, expect, "{input}");
         let peg = analyze(input, Engine::Peg);
-        assert_eq!(peg.is_ok(), !m.has_obsolete(), "{input}: PEG acceptance vs obsolete flag");
+        assert_eq!(
+            peg.is_ok(),
+            !m.has_obsolete(),
+            "{input}: PEG acceptance vs obsolete flag"
+        );
     }
 }

@@ -143,17 +143,15 @@ checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "camxes-rs"
-version = "0.1.6"
+version = "2.0.0"
 dependencies = [
  "criterion",
  "env_logger",
  "flate2",
  "log",
- "once_cell",
  "rustc-hash",
  "serde",
  "serde_json",
- "tergenzalvi",
 ]
 
 [[package]]
@@ -1417,10 +1415,6 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
-
-[[package]]
-name = "tergenzalvi"
-version = "0.1.0"
 
 [[package]]
 name = "thiserror"

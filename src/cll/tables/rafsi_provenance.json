@@ -1,0 +1,12 @@
+{
+  "source": "LLG baselined wordlists 1994-09-26",
+  "urls": [
+    "https://lojban.org/publications/wordlists/rafsi.txt",
+    "https://lojban.org/publications/wordlists/gismu"
+  ],
+  "cll_locus": "CLL \u00a74.6 (rafsi forms); \u00a74.11 (algorithm presupposes complete gismu+rafsi list). CLL Ch.4 DocBook prints examples only \u2014 no full appendix table in korpora2/cll or archive/cll/chapters.",
+  "vs_jbovlaste": "Intentionally excludes modern jbovlaste / experimental rafsi. Long rafsi derived from gismu per CLL \u00a74.6.",
+  "counts": {
+    "see": "rafsi_data.rs constants"
+  }
+}

@@ -15,13 +15,15 @@
 //!    derivation spanning the whole input.
 
 use super::peg::words_from_tree;
-use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass, WordDialect};
+use super::{
+    split_cmavo_cluster, Dialect, MorphWord, Morphology, MorphologyError, WordClass, WordDialect,
+};
+use crate::cll::constraints::ConstrainedResult;
+use crate::cll::lex::{morph_parse_stream_piece, segment_continuous};
+use crate::cll::shapes::MorphClass;
 use crate::earley::EarleyGrammar;
 use crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
 use std::sync::OnceLock;
-use tergenzalvi::constraints::ConstrainedResult;
-use tergenzalvi::lex::{morph_parse_stream_piece, segment_continuous};
-use tergenzalvi::shapes::MorphClass;
 
 /// The camxes morphology grammar compiled for the Earley engine.
 pub fn camxes_morphology_grammar() -> &'static EarleyGrammar {
@@ -103,13 +105,15 @@ fn class_of(r: &ConstrainedResult) -> Option<WordClass> {
 
 /// CLL-dialect analysis with tergenzalvi.
 pub(super) fn analyze_cll(input: &str) -> Result<Morphology, MorphologyError> {
-    // tergenzalvi's orthography normalizer drops unknown characters; reject
+    // The CLL (`crate::cll`) orthography normalizer drops unknown characters; reject
     // them here so that e.g. `xa!` is not silently read as `xa`.
-    if let Some((pos, ch)) = input
-        .char_indices()
-        .find(|&(_, c)| !(c.is_ascii_alphabetic() || c.is_ascii_whitespace() || matches!(c, '\'' | ',' | '.')))
-    {
-        return Err(err(pos, format!("character {ch:?} is not Lojban orthography")));
+    if let Some((pos, ch)) = input.char_indices().find(|&(_, c)| {
+        !(c.is_ascii_alphabetic() || c.is_ascii_whitespace() || matches!(c, '\'' | ',' | '.'))
+    }) {
+        return Err(err(
+            pos,
+            format!("character {ch:?} is not Lojban orthography"),
+        ));
     }
     let mut words = Vec::new();
     let bytes = input.as_bytes();
@@ -171,7 +175,10 @@ fn cll_piece(
     let mut local = Vec::new();
     for tok in &seg.tokens {
         let Some(class) = class_of(&tok.result) else {
-            return Err(err(cursor, format!("no morphology for `{}` in `{body}`", tok.text)));
+            return Err(err(
+                cursor,
+                format!("no morphology for `{}` in `{body}`", tok.text),
+            ));
         };
         let rel = input[cursor..end]
             .find(tok.text.as_str())

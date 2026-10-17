@@ -1,14 +1,14 @@
 use super::errors::TransformError;
-use crate::peg::grammar::Peg;
 use crate::peg::grammar::MemoMap;
+use crate::peg::grammar::Peg;
 use crate::peg::grammar::{
     AND, ARROW, CHAR, CLASS, CLASS_MEMBER, DEF, DOT, EOF, EXPR, IDENT, LITERAL, LPAR, NOT, PLUS,
     PREFIX, PRIMARY, QUESTION, RANGE, RPAR, SEQUENCE, SLASH, SPACING, STAR, SUFFIX, TEXT,
 };
 use crate::peg::parsing::{ParseNode, Span};
 use crate::peg::rule::Rule;
-use std::collections::{HashMap, HashSet};
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 type Result<T> = std::result::Result<T, TransformError>;
@@ -20,14 +20,18 @@ pub struct Transformer<'a> {
 impl Transformer<'_> {
     pub fn build(&self, start_rule: &str, cst: Vec<ParseNode>) -> Result<Peg> {
         match &cst[..] {
-            [ParseNode::NonTerminal { name, children: tokens, .. }] if name == TEXT => Ok(Peg {
+            [ParseNode::NonTerminal {
+                name,
+                children: tokens,
+                ..
+            }] if name == TEXT => Ok(Peg {
                 rules: self.build_grammar_rules(tokens)?,
                 start: start_rule.to_string(),
                 memo: RefCell::new(MemoMap::default()),
             }),
-            [ParseNode::NonTerminal { name: n, .. }] => Err(TransformError::CstShouldStartWithGrammar(
-                format!("Found '{n}' instead!"),
-            )),
+            [ParseNode::NonTerminal { name: n, .. }] => Err(
+                TransformError::CstShouldStartWithGrammar(format!("Found '{n}' instead!")),
+            ),
             _ => Err(TransformError::CstShouldOnlyHaveOneRoot(
                 "Invalid root structure".into(),
             )),
@@ -99,7 +103,7 @@ impl Transformer<'_> {
                     let (expr, new_refs) = self.convert_sequence(&chunk[0])?;
                     exprs.push(expr);
                     refs.extend(new_refs);
-                    if chunk.get(1).map_or(false, |t| !Self::is_token(SLASH, t)) {
+                    if chunk.get(1).is_some_and(|t| !Self::is_token(SLASH, t)) {
                         return Err(TransformError::UnExpectedToken(SLASH.into()));
                     }
                     Ok((exprs, refs))
@@ -177,7 +181,11 @@ impl Transformer<'_> {
 
     fn unescape_char(&self, parse_node: &ParseNode) -> Result<String> {
         match parse_node {
-            ParseNode::NonTerminal { name, span: Span(s, e), .. } if name == CHAR => Ok(self.source[*s..*e]
+            ParseNode::NonTerminal {
+                name,
+                span: Span(s, e),
+                ..
+            } if name == CHAR => Ok(self.source[*s..*e]
                 .replace("\\'", "'")
                 .replace("\\\"", "\"")
                 .replace("\\[", "[")
@@ -242,10 +250,14 @@ impl Transformer<'_> {
 
     fn get_tokens<'a>(name: &str, parse_node: &'a ParseNode) -> Result<&'a Vec<ParseNode>> {
         match parse_node {
-            ParseNode::NonTerminal { name: n, children: tokens, .. } if n == name => Ok(tokens),
-            ParseNode::NonTerminal { name: n, .. } => Err(TransformError::UnExpectedToken(format!(
-                "Expected {name}, got {n}"
-            ))),
+            ParseNode::NonTerminal {
+                name: n,
+                children: tokens,
+                ..
+            } if n == name => Ok(tokens),
+            ParseNode::NonTerminal { name: n, .. } => Err(TransformError::UnExpectedToken(
+                format!("Expected {name}, got {n}"),
+            )),
             _ => Err(TransformError::UnExpectedToken(format!("Expected {name}"))),
         }
     }

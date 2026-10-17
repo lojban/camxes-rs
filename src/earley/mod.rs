@@ -18,7 +18,7 @@
 //! reproduces the PEG's own derivation, while the chart still knows every
 //! other derivation (see [`EarleyGrammar::parse_complete`]).
 //!
-//! The output uses the same [`ParseResult`] / [`ParseNode`] types as the PEG
+//! The output uses the same [`ParseResult`] / [`ParseNode`](crate::peg::parsing::ParseNode) types as the PEG
 //! engine. Nodes are emitted for named rules and for terminals; helper
 //! nonterminals introduced by the compiler are flattened away.
 
@@ -27,7 +27,7 @@ mod recognize;
 
 pub use compile::CompileError;
 
-use crate::peg::parsing::{ErrorKind, ParseError, ParseNode, ParseResult};
+use crate::peg::parsing::{ErrorKind, ParseError, ParseResult};
 use std::sync::Arc;
 
 /// 256-bit byte set used for terminals.
@@ -185,21 +185,22 @@ impl EarleyGrammar {
     }
 }
 
-/// Keep `ParseNode` in scope for docs.
-#[allow(dead_code)]
-type _Node = ParseNode;
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::peg::grammar::Peg;
+    use crate::peg::parsing::ParseNode;
 
     fn shape(nodes: &[ParseNode]) -> String {
         nodes
             .iter()
             .map(|n| match n {
                 ParseNode::Terminal { span } => format!("{}-{}", span.0, span.1),
-                ParseNode::NonTerminal { name, span, children } => {
+                ParseNode::NonTerminal {
+                    name,
+                    span,
+                    children,
+                } => {
                     format!("{name}[{}-{}]({})", span.0, span.1, shape(children))
                 }
             })
@@ -233,7 +234,11 @@ mod tests {
         primary <- number / '(' additive ')'
         number <- [0-9]+
         "#;
-        same_as_peg("calc", g, &["1", "1+2*3", "(1+2)*3", "12*(3-4)/5", "1+", "x"]);
+        same_as_peg(
+            "calc",
+            g,
+            &["1", "1+2*3", "(1+2)*3", "12*(3-4)/5", "1+", "x"],
+        );
     }
 
     #[test]
@@ -242,7 +247,11 @@ mod tests {
         start <- word+
         word <- &[a-z] 'hello' ' '? / !'hello' [a-z]+ ' '?
         "#;
-        same_as_peg("start", g, &["hello world ", "hello", "helloworld", "abc hello", ""]);
+        same_as_peg(
+            "start",
+            g,
+            &["hello world ", "hello", "helloworld", "abc hello", ""],
+        );
     }
 
     #[test]

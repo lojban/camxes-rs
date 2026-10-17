@@ -7,9 +7,10 @@
 //!
 //! * [`Engine::Peg`] (default, always available) runs the camxes-style PEG
 //!   morphology grammar [`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`].
-//! * [`Engine::Earley`] (Cargo feature `earley`) runs the CLL-grounded
-//!   CFG/Earley morphology of the [`tergenzalvi`](https://github.com/lagleki/tergenzalvi)
-//!   crate plus constraint filters. Besides everything the PEG grammar accepts
+//! * `Engine::Earley` (Cargo feature `earley`) runs the same grammar on the
+//!   [`crate::earley`] engine and falls back to the CLL-grounded CFG/Earley
+//!   morphology of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
+//!   (vendored as `camxes_rs::cll`). Besides everything the PEG grammar accepts
 //!   it also accepts the older CLL dialect that the PEG rejects (for example
 //!   obsolete fu'ivla such as `kuarka`). Each word is flagged
 //!   [`WordDialect::Standard`] or [`WordDialect::Obsolete`] by rule.
@@ -57,7 +58,10 @@ impl WordClass {
 
     /// True for gismu, lujvo, and fu'ivla.
     pub fn is_brivla(self) -> bool {
-        matches!(self, WordClass::Gismu | WordClass::Lujvo | WordClass::Fuhivla)
+        matches!(
+            self,
+            WordClass::Gismu | WordClass::Lujvo | WordClass::Fuhivla
+        )
     }
 }
 
@@ -111,7 +115,7 @@ impl MorphWord {
 ///   class. Typical obsolete forms: on-glide diphthongs `iV`/`uV` inside
 ///   brivla and names (`kuarka`, `guanJOUS`), diphthong + apostrophe + vowel
 ///   (`gondii'i`), `CiV'V'V` cmavo (`cia'o'e`), and fu'ivla shapes that camxes
-///   reads differently (`mastla`). Only produced by [`Engine::Earley`].
+///   reads differently (`mastla`). Only produced by `Engine::Earley`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum WordDialect {
@@ -251,7 +255,7 @@ pub fn analyze(input: &str, engine: Engine) -> Result<Morphology, MorphologyErro
 
 #[cfg(feature = "earley")]
 fn annotate_selmaho(m: &mut Morphology) {
-    let lexicon = tergenzalvi::grammar::CmavoLexicon::global();
+    let lexicon = crate::cll::grammar::CmavoLexicon::global();
     for w in &mut m.words {
         if w.class == WordClass::Cmavo {
             w.selmaho = lexicon.selmaho(&w.text).map(str::to_string);
@@ -272,7 +276,8 @@ pub(crate) fn split_cmavo_cluster(text: &str) -> Vec<(usize, usize)> {
     let mut start = 0usize;
     for (i, &b) in bytes.iter().enumerate() {
         let c = b.to_ascii_lowercase();
-        let consonant = c.is_ascii_alphabetic() && !matches!(c, b'a' | b'e' | b'i' | b'o' | b'u' | b'y');
+        let consonant =
+            c.is_ascii_alphabetic() && !matches!(c, b'a' | b'e' | b'i' | b'o' | b'u' | b'y');
         if consonant && i > start {
             out.push((start, i));
             start = i;
@@ -343,7 +348,11 @@ mod tests {
             "coi",
             "zoskaigau",
         ] {
-            assert_eq!(sig(input, Engine::Earley), sig(input, Engine::Peg), "{input}");
+            assert_eq!(
+                sig(input, Engine::Earley),
+                sig(input, Engine::Peg),
+                "{input}"
+            );
         }
     }
 

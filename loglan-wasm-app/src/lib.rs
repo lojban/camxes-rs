@@ -37,6 +37,5 @@ pub fn run_app() -> Result<(), JsValue> {
         .expect("Yew mount point should be an HTMLElement with style")
         .expect("Failed to show Yew app container");
 
-
     Ok(())
 }

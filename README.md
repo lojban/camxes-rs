@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-camxes-rs = "0.1.6"
+camxes-rs = "2.0.0"
 ```
 
 ## 🚦 Quick Start
@@ -37,31 +37,22 @@ Go to the project directory and run `cargo run --example cmaxes-test`.
 It will run the PEG grammar specified in `src/examples/cmaxes-test.rs` file against a sample input.
 
 
-<!-- Here's a simple example that parses a basic grammar:
+### Library example
 
 ```rust
-use camxes_rs::peg::grammar::PEG;
+use camxes_rs::peg::grammar::Peg;
 
-fn main() {
-    // Define your grammar
-    let grammar = (
-        "expression",  // Start rule
-        r#"
-        expression <- term (('+' / '-') term)*
-        term <- factor (('*' / '/') factor)*
-        factor <- number / '(' expression ')'
-        number <- [0-9]+ 
-        "#
-    );
-
-    // Create parser
-    let parser = PEG::new(grammar.0, grammar.1).unwrap();
-    
-    // Parse input
-    let result = parser.parse("2+3*4");
-    println!("{:#?}", result);
-}
-``` -->
+let grammar = r#"
+expression <- term (('+' / '-') term)*
+term <- factor (('*' / '/') factor)*
+factor <- number / '(' expression ')'
+number <- [0-9]+
+"#;
+let parser = Peg::new("expression", grammar).unwrap();
+let result = parser.parse("2+3*4");
+assert!(result.2.is_ok());
+assert_eq!(result.1, 5); // bytes matched
+```
 
 ## 🔧 Grammar Syntax
 
@@ -96,15 +87,35 @@ With the optional `earley` feature an alternative engine is available:
 
 ```toml
 [dependencies]
-camxes-rs = { version = "0.1.6", features = ["earley"] }
+camxes-rs = { version = "2.0.0", features = ["earley"] }
 ```
 
 `Engine::Earley` runs the same grammar on an Earley chart parser (with PEG
 lookahead and ordered-choice preference) and falls back to the CLL morphology
-of [tergenzalvi](https://github.com/lagleki/tergenzalvi), so it accepts both
+of [tergenzalvi](https://github.com/lagleki/tergenzalvi) (vendored in the
+crate as `camxes_rs::cll`), so it accepts both
 the camxes dialect and the older CLL dialect (obsolete dictionary words such as
 `kuarka` that the PEG engine rejects). For words the PEG accepts, both
 engines return the same segmentation and word classes.
+
+### Whole-text syntax
+
+`camxes_rs::syntax` checks complete Lojban texts against the camxes grammar
+(`grammars::LOJBAN_GRAMMAR`) with either engine:
+
+```rust
+use camxes_rs::morphology::Engine;
+use camxes_rs::syntax;
+
+assert!(syntax::accepts("lo prenu poi klama cu tavla", Engine::Peg));
+assert!(!syntax::accepts("lo cu klama", Engine::Peg));
+```
+
+The Earley engine first takes the PEG-preferred derivation and otherwise any
+derivation covering the text. `zoi`/`la'o` quotes need delimiter
+back-references neither engine implements: the PEG engine rejects them, the
+Earley engine accepts them without checking that the delimiters match.
+`tests/grammar_basics.rs` lists the constructions tested.
 
 ### Standard vs obsolete words
 

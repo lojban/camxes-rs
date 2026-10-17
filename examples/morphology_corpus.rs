@@ -44,7 +44,11 @@ fn main() {
                         "{:7} {w:20} {:?} {}",
                         e.name(),
                         m.dialect,
-                        m.words.iter().map(|x| format!("{}/{}", x.text, x.type_label())).collect::<Vec<_>>().join(" ")
+                        m.words
+                            .iter()
+                            .map(|x| format!("{}/{}", x.text, x.type_label()))
+                            .collect::<Vec<_>>()
+                            .join(" ")
                     ),
                     Err(err) => println!("{:7} {w:20} ERR {err}", e.name()),
                 }
@@ -54,10 +58,13 @@ fn main() {
     }
     let raw = args.iter().any(|a| a == "--raw");
     let args: Vec<String> = args.into_iter().filter(|a| a != "--raw").collect();
-    let path = args
-        .first()
-        .cloned()
-        .unwrap_or_else(|| concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/lensisku-en-words.tsv.gz").into());
+    let path = args.first().cloned().unwrap_or_else(|| {
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/data/lensisku-en-words.tsv.gz"
+        )
+        .into()
+    });
     let entries = load(&path);
     if raw {
         raw_grammar_timing(&entries);
@@ -71,7 +78,8 @@ fn main() {
     let mut earley_fail = vec![];
     let mut peg_only_rej = vec![];
     // Full per-word report: one row per headword.
-    let mut results = vec!["word\tword_type\tpeg\tearley\tstatus\tearley_source\tdialect".to_string()];
+    let mut results =
+        vec!["word\tword_type\tpeg\tearley\tstatus\tearley_source\tdialect".to_string()];
     let cell = |r: &Result<Morphology, MorphologyError>| match r {
         Ok(m) => m
             .words
@@ -100,11 +108,19 @@ fn main() {
             (Ok(pm), Ok(em)) if pm.signature() == em.signature() => st[3] += 1,
             (Ok(pm), Ok(em)) => {
                 st[4] += 1;
-                disagree.push(format!("{word}\t{ty}\tpeg: {}\tearley: {}", pm.render(), em.render()));
+                disagree.push(format!(
+                    "{word}\t{ty}\tpeg: {}\tearley: {}",
+                    pm.render(),
+                    em.render()
+                ));
             }
             (Err(_), Ok(em)) => {
                 st[5] += 1;
-                peg_only_rej.push(format!("{word}\t{ty}\t{:?}\tearley: {}", em.dialect, em.render()));
+                peg_only_rej.push(format!(
+                    "{word}\t{ty}\t{:?}\tearley: {}",
+                    em.dialect,
+                    em.render()
+                ));
             }
             _ => {}
         }
@@ -118,7 +134,9 @@ fn main() {
             "{word}\t{ty}\t{}\t{}\t{status}\t{}\t{}",
             cell(&p),
             cell(&e),
-            e.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_default(),
+            e.as_ref()
+                .map(|m| format!("{:?}", m.dialect))
+                .unwrap_or_default(),
             match &e {
                 Ok(m) if m.has_obsolete() => "obsolete",
                 Ok(_) => "standard",
@@ -128,21 +146,32 @@ fn main() {
         if let Err(err) = &e {
             earley_fail.push(format!(
                 "{word}\t{ty}\tpeg: {}\t{err}",
-                p.as_ref().map(|m| m.render()).unwrap_or_else(|_| "ERR".into())
+                p.as_ref()
+                    .map(|m| m.render())
+                    .unwrap_or_else(|_| "ERR".into())
             ));
         }
     }
     let n = entries.len();
     println!("entries: {n}");
-    println!("{:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}", "word_type", "total", "pegOK", "earOK", "agree", "differ", "pegRej+");
+    println!(
+        "{:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}",
+        "word_type", "total", "pegOK", "earOK", "agree", "differ", "pegRej+"
+    );
     let mut tot = [0usize; 6];
     for (ty, s) in &stats {
-        println!("{ty:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}", s[0], s[1], s[2], s[3], s[4], s[5]);
+        println!(
+            "{ty:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}",
+            s[0], s[1], s[2], s[3], s[4], s[5]
+        );
         for i in 0..6 {
             tot[i] += s[i];
         }
     }
-    println!("{:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}", "TOTAL", tot[0], tot[1], tot[2], tot[3], tot[4], tot[5]);
+    println!(
+        "{:24} {:>6} {:>6} {:>6} {:>6} {:>6} {:>8}",
+        "TOTAL", tot[0], tot[1], tot[2], tot[3], tot[4], tot[5]
+    );
     println!(
         "time: peg {:?} ({:.0} words/s), earley {:?} ({:.0} words/s)",
         tp,
@@ -164,7 +193,10 @@ fn main() {
     dump("peg-rejected-earley-ok", &peg_only_rej);
     let out = format!("{}/target/corpus-results.tsv", env!("CARGO_MANIFEST_DIR"));
     std::fs::write(&out, results.join("\n") + "\n").unwrap();
-    println!("results: {} headwords (written to {out})", results.len() - 1);
+    println!(
+        "results: {} headwords (written to {out})",
+        results.len() - 1
+    );
 }
 
 /// Same grammar, both engines, no adapters or fallbacks.
@@ -213,8 +245,18 @@ fn raw_grammar_timing(entries: &[(String, String)]) {
         .collect();
     worst.sort_by_key(|a| std::cmp::Reverse(a.0));
     println!("raw grammar on {} inputs ({} bytes)", inputs.len(), bytes);
-    println!("  peg    {:?}  ({:.0} inputs/s, {:.0} KB/s)", tp, inputs.len() as f64 / tp.as_secs_f64(), bytes as f64 / 1024.0 / tp.as_secs_f64());
-    println!("  earley {:?}  ({:.0} inputs/s, {:.0} KB/s)", te, inputs.len() as f64 / te.as_secs_f64(), bytes as f64 / 1024.0 / te.as_secs_f64());
+    println!(
+        "  peg    {:?}  ({:.0} inputs/s, {:.0} KB/s)",
+        tp,
+        inputs.len() as f64 / tp.as_secs_f64(),
+        bytes as f64 / 1024.0 / tp.as_secs_f64()
+    );
+    println!(
+        "  earley {:?}  ({:.0} inputs/s, {:.0} KB/s)",
+        te,
+        inputs.len() as f64 / te.as_secs_f64(),
+        bytes as f64 / 1024.0 / te.as_secs_f64()
+    );
     println!("  same match end: {same_end}/{}", inputs.len());
     for (d, i) in worst.iter().take(5) {
         println!("  slow earley {:?} {:.60}", d, i);

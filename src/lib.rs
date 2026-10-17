@@ -12,18 +12,20 @@
 //! let result = parser.parse("hello world");
 //! ```
 //!
-//! // Re-export Loglan grammar for external use
-//! pub mod examples {
-//!     // We need to make the example module public temporarily to access the grammar.
-//!     // A better approach might be to move the grammar definition to a more central, public location.
-//!     #![allow(dead_code)] // Allow unused items within the included file
-//!     #![allow(unused_variables)] // Allow unused variables within the included file
-//!     include!("examples/loglan.rs");
-//!     pub use self::LOGLAN_GRAMMAR;
-//! }
-//!
+//! # Modules
+//! * [`peg`] — the PEG parser generator.
+//! * [`earley`] — an Earley engine that runs the same PEG grammar text.
+//! * [`grammars`] — embedded grammars: Loglan, Lojban syntax (camxes) and
+//!   Lojban morphology.
+//! * [`syntax`] — whole-text Lojban syntax check with either engine.
+//! * [`morphology`] — engine-independent Lojban morphology (word split,
+//!   classes, selma'o, standard/obsolete dialect).
+//! * `cll` (feature `earley`) — vendored tergenzalvi CLL morphology.
 
+#[cfg(feature = "earley")]
+pub mod cll;
 pub mod earley;
 pub mod grammars;
 pub mod morphology;
 pub mod peg;
+pub mod syntax;
