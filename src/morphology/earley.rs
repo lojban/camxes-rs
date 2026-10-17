@@ -9,11 +9,13 @@
 //!    are split at whitespace and written pauses, and continuous text is
 //!    segmented by tergenzalvi's stream segmenter. This accepts the older
 //!    dialect that camxes rejects.
+//!    Each word of such a result gets a rule-based [`WordDialect`]: obsolete
+//!    unless the camxes grammar reads that word alone with the same class.
 //! 3. **camxes, complete derivation:** last resort, any camxes-grammar
 //!    derivation spanning the whole input.
 
 use super::peg::words_from_tree;
-use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass};
+use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass, WordDialect};
 use crate::earley::EarleyGrammar;
 use crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
 use std::sync::OnceLock;
@@ -128,6 +130,9 @@ pub(super) fn analyze_cll(input: &str) -> Result<Morphology, MorphologyError> {
     if words.is_empty() {
         return Err(err(0, "no words"));
     }
+    for w in &mut words {
+        w.word_dialect = word_dialect(&w.text, w.class);
+    }
     Ok(Morphology {
         words,
         dialect: Dialect::Cll,
@@ -183,6 +188,24 @@ fn cll_piece(
     Ok(())
 }
 
+/// Rule-based dialect of one CLL-accepted word: standard when the camxes
+/// grammar alone reads it as exactly this one word of this class, obsolete
+/// otherwise.
+fn word_dialect(word: &str, class: WordClass) -> WordDialect {
+    let g = camxes_morphology_grammar();
+    let mut text = word.to_ascii_lowercase();
+    text.push(' ');
+    let r = g.parse(&text);
+    let standard = matches!(r.2.as_ref(), Ok(nodes) if r.1 == text.len()
+        && matches!(words_from_tree(nodes, word).as_deref(),
+            Ok([w]) if w.class == class && w.text.eq_ignore_ascii_case(word)));
+    if standard {
+        WordDialect::Standard
+    } else {
+        WordDialect::Obsolete
+    }
+}
+
 fn push(input: &str, start: usize, end: usize, class: WordClass, out: &mut Vec<MorphWord>) {
     let surface = &input[start..end];
     let spans = if class == WordClass::Cmavo {
@@ -196,6 +219,7 @@ fn push(input: &str, start: usize, end: usize, class: WordClass, out: &mut Vec<M
             span: (start + s, start + e),
             class,
             selmaho: None,
+            word_dialect: WordDialect::Standard,
         });
     }
 }

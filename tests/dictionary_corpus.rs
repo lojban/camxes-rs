@@ -27,7 +27,8 @@ use std::io::Read;
 use std::sync::OnceLock;
 
 const PARITY_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/morphology-parity.tsv");
-const PARITY_HEADER: &str = "word\tword_type\texpected_morphology\tpeg\tearley\tearley_dialect";
+const PARITY_HEADER: &str =
+    "word\tword_type\texpected_morphology\tpeg\tearley\tearley_source\tdialect\tlabel_check";
 
 /// Headwords no Lojban morphology accepts (both engines reject them), with
 /// the reason. Non-ASCII headwords (mojibake) are also treated as invalid.
@@ -113,16 +114,43 @@ fn corpus_outcomes() -> &'static (Vec<Entry>, Vec<Outcome>) {
     })
 }
 
-/// Words with class and (for cmavo) selma'o, e.g. `lo/cmavo:LE nu/cmavo:NU`.
+/// Words with class, `+obsolete` for obsolete-dialect words and (for cmavo)
+/// selma'o, e.g. `lo/cmavo:LE nu/cmavo:NU` or `kuarka/fu'ivla+obsolete`.
 fn render_full(m: &Morphology) -> String {
     m.words
         .iter()
-        .map(|w| match &w.selmaho {
-            Some(s) => format!("{}/{}:{}", w.text, w.class, s),
-            None => format!("{}/{}", w.text, w.class),
+        .map(|w| {
+            let mut s = format!("{}/{}", w.text, w.class);
+            if w.is_obsolete() {
+                s.push_str("+obsolete");
+            }
+            if let Some(sel) = &w.selmaho {
+                s.push(':');
+                s.push_str(sel);
+            }
+            s
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// `standard` / `obsolete` (any obsolete word) for an accepted result.
+fn dialect_of(m: &Morphology) -> &'static str {
+    if m.has_obsolete() {
+        "obsolete"
+    } else {
+        "standard"
+    }
+}
+
+/// Dictionary label (`obsolete …` or not) against the rule-based dialect.
+fn label_check(word_type: &str, dialect: Option<&str>) -> &'static str {
+    match (word_type.starts_with("obsolete"), dialect) {
+        (_, None) => "-",
+        (true, Some("obsolete")) | (false, Some("standard")) => "ok",
+        (true, Some(_)) => "labeled-obsolete-form-standard",
+        (false, Some(_)) => "labeled-standard-form-obsolete",
+    }
 }
 
 /// One parity row. The expected morphology is the PEG result when the PEG
@@ -136,13 +164,16 @@ fn parity_row(e: &Entry, (peg, earley): &Outcome) -> String {
         (Some(m), Some(x)) if &render_full(m) == x => "ok",
         (Some(_), _) => "differs",
     };
-    let dialect = earley.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_else(|| "-".into());
+    let source = earley.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_else(|| "-".into());
+    let dialect = earley.as_ref().map(dialect_of);
     format!(
-        "{}\t{}\t{}\t{}\t{earley_status}\t{dialect}",
+        "{}\t{}\t{}\t{}\t{earley_status}\t{source}\t{}\t{}",
         e.word,
         e.word_type,
         expected.as_deref().unwrap_or("-"),
         if peg.is_some() { "ok" } else { "reject" },
+        dialect.unwrap_or("-"),
+        label_check(&e.word_type, dialect),
     )
 }
 
@@ -178,6 +209,36 @@ fn morphology_parity_matches_committed_expectations() {
         mismatches.iter().take(50).cloned().collect::<Vec<_>>().join("\n")
     );
     assert!(!actual.iter().any(|r| r.contains("\tdiffers\t")));
+}
+
+/// Rule-based dialect: a result is obsolete exactly when the standard
+/// (PEG/camxes) rules reject it; dictionary labels are only reported.
+#[test]
+fn obsolete_dialect_is_rule_based() {
+    let (entries, outcomes) = corpus_outcomes();
+    let mut bad = Vec::new();
+    let (mut obs_ok, mut obs_std, mut std_obs) = (Vec::new(), Vec::new(), Vec::new());
+    for (e, (peg, earley)) in entries.iter().zip(outcomes) {
+        let Some(m) = earley else { continue };
+        if peg.is_some() == m.has_obsolete() {
+            bad.push(format!("{} (peg ok: {}): {}", e.word, peg.is_some(), render_full(m)));
+        }
+        match label_check(&e.word_type, Some(dialect_of(m))) {
+            "labeled-obsolete-form-standard" => obs_std.push(e.word.as_str()),
+            "labeled-standard-form-obsolete" => std_obs.push(e.word.as_str()),
+            _ if m.has_obsolete() => obs_ok.push(e.word.as_str()),
+            _ => {}
+        }
+    }
+    println!(
+        "obsolete by rule and label: {}; labeled obsolete but standard form: {}; \
+         labeled standard but obsolete form: {} {:?}",
+        obs_ok.len(),
+        obs_std.len(),
+        std_obs.len(),
+        std_obs
+    );
+    assert!(bad.is_empty(), "dialect does not follow the standard rules:\n{}", bad.join("\n"));
 }
 
 #[test]
@@ -258,5 +319,35 @@ fn cll_dialect_words_are_classified() {
         if analyze(word, Engine::Peg).is_err() {
             assert_eq!(m.dialect, Dialect::Cll, "{word}");
         }
+    }
+}
+
+/// Made-up (non-dictionary) words: obsolete classes are found by rule.
+#[test]
+fn made_up_obsolete_words_are_flagged() {
+    use WordClass::*;
+    for (input, expect) in [
+        // on-glide diphthongs (`ia`, `ua`) inside a fu'ivla
+        ("spatrkuandi", vec![("spatrkuandi", Fuhivla, true)]),
+        ("tiadrome", vec![("tiadrome", Fuhivla, true)]),
+        // `n` before an affricate (`ndj`), allowed by CLL §3.7, banned by camxes
+        ("djinundji", vec![("djinundji", Lujvo, true)]),
+        // CVV'V'V cmavo with an on-glide
+        ("cie'a'u", vec![("cie'a'u", Cmavo, true)]),
+        // on-glide diphthong in a name
+        ("tiuanJOUS", vec![("tiuanJOUS", Cmevla, true)]),
+        // zei-lujvo: only the obsolete component is flagged
+        ("lojbo zei kuarbli", vec![("lojbo", Gismu, false), ("zei", Cmavo, false), ("kuarbli", Fuhivla, true)]),
+        // standard made-up words stay standard
+        ("pluviobasu", vec![("pluviobasu", Fuhivla, false)]),
+        ("zbanunkla", vec![("zbanunkla", Lujvo, false)]),
+        ("blaxi", vec![("blaxi", Gismu, false)]),
+    ] {
+        let m = analyze(input, Engine::Earley).unwrap_or_else(|e| panic!("{input}: {e}"));
+        let got: Vec<(&str, WordClass, bool)> =
+            m.words.iter().map(|w| (w.text.as_str(), w.class, w.is_obsolete())).collect();
+        assert_eq!(got, expect, "{input}");
+        let peg = analyze(input, Engine::Peg);
+        assert_eq!(peg.is_ok(), !m.has_obsolete(), "{input}: PEG acceptance vs obsolete flag");
     }
 }

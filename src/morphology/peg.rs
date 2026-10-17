@@ -1,6 +1,6 @@
 //! PEG engine adapter: camxes-style morphology grammar → [`Morphology`].
 
-use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass};
+use super::{split_cmavo_cluster, Dialect, Morphology, MorphologyError, MorphWord, WordClass, WordDialect};
 use crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
 use crate::peg::grammar::Peg;
 use crate::peg::parsing::ParseNode;
@@ -95,5 +95,6 @@ fn word(input: &str, start: usize, end: usize, class: WordClass) -> MorphWord {
         span: (start, end),
         class,
         selmaho: None,
+        word_dialect: WordDialect::Standard,
     }
 }

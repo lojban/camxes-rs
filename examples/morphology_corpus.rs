@@ -40,7 +40,12 @@ fn main() {
         for w in args[i + 1].split(',') {
             for e in Engine::available() {
                 match analyze(w, *e) {
-                    Ok(m) => println!("{:7} {w:20} {:?} {}", e.name(), m.dialect, m.render()),
+                    Ok(m) => println!(
+                        "{:7} {w:20} {:?} {}",
+                        e.name(),
+                        m.dialect,
+                        m.words.iter().map(|x| format!("{}/{}", x.text, x.type_label())).collect::<Vec<_>>().join(" ")
+                    ),
                     Err(err) => println!("{:7} {w:20} ERR {err}", e.name()),
                 }
             }
@@ -66,9 +71,14 @@ fn main() {
     let mut earley_fail = vec![];
     let mut peg_only_rej = vec![];
     // Full per-word report: one row per headword.
-    let mut results = vec!["word\tword_type\tpeg\tearley\tstatus\tearley_dialect".to_string()];
+    let mut results = vec!["word\tword_type\tpeg\tearley\tstatus\tearley_source\tdialect".to_string()];
     let cell = |r: &Result<Morphology, MorphologyError>| match r {
-        Ok(m) => m.render(),
+        Ok(m) => m
+            .words
+            .iter()
+            .map(|w| format!("{}/{}", w.text, w.type_label()))
+            .collect::<Vec<_>>()
+            .join(" "),
         Err(err) => format!("ERR {err}").replace(['\t', '\n'], " "),
     };
     for (word, ty) in &entries {
@@ -105,10 +115,15 @@ fn main() {
             (Err(_), Err(_)) => "both-reject",
         };
         results.push(format!(
-            "{word}\t{ty}\t{}\t{}\t{status}\t{}",
+            "{word}\t{ty}\t{}\t{}\t{status}\t{}\t{}",
             cell(&p),
             cell(&e),
-            e.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_default()
+            e.as_ref().map(|m| format!("{:?}", m.dialect)).unwrap_or_default(),
+            match &e {
+                Ok(m) if m.has_obsolete() => "obsolete",
+                Ok(_) => "standard",
+                Err(_) => "-",
+            }
         ));
         if let Err(err) = &e {
             earley_fail.push(format!(

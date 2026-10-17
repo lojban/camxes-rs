@@ -11,7 +11,8 @@
 //!   CFG/Earley morphology of the [`tergenzalvi`](https://github.com/lagleki/tergenzalvi)
 //!   crate plus constraint filters. Besides everything the PEG grammar accepts
 //!   it also accepts the older CLL dialect that the PEG rejects (for example
-//!   the obsolete fu'ivla `matriocka`).
+//!   obsolete fu'ivla such as `kuarka`). Each word is flagged
+//!   [`WordDialect::Standard`] or [`WordDialect::Obsolete`] by rule.
 //!
 //! ```rust
 //! use camxes_rs::morphology::{analyze, Engine, WordClass};
@@ -78,6 +79,45 @@ pub struct MorphWord {
     /// Chapter 21 selma'o of a cmavo when known (needs feature `earley`,
     /// which ships the cmavo lexicon). Always `None` for non-cmavo.
     pub selmaho: Option<String>,
+    /// Which word-form rules this word satisfies; see [`WordDialect`].
+    pub word_dialect: WordDialect,
+}
+
+impl MorphWord {
+    /// True when the word's form is valid only under the obsolete (CLL)
+    /// rules, i.e. the standard (camxes) word rules reject it.
+    pub fn is_obsolete(&self) -> bool {
+        self.word_dialect == WordDialect::Obsolete
+    }
+
+    /// Word type label in the style of the lensisku dictionary, e.g.
+    /// `fu'ivla` or `obsolete fu'ivla`.
+    pub fn type_label(&self) -> String {
+        match self.word_dialect {
+            WordDialect::Standard => self.class.as_str().to_string(),
+            WordDialect::Obsolete => format!("obsolete {}", self.class),
+        }
+    }
+}
+
+/// Per-word dialect, decided by **rules** (no word lists):
+///
+/// * `Standard` — the word, on its own, is a word of the given class under
+///   the standard camxes morphology rules
+///   ([`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`]). Every word the PEG
+///   engine produces is standard.
+/// * `Obsolete` — the camxes rules reject the word (or give it another
+///   class), but the CLL Chapter 3–4 rules of tergenzalvi accept it with this
+///   class. Typical obsolete forms: on-glide diphthongs `iV`/`uV` inside
+///   brivla and names (`kuarka`, `guanJOUS`), diphthong + apostrophe + vowel
+///   (`gondii'i`), `CiV'V'V` cmavo (`cia'o'e`), and fu'ivla shapes that camxes
+///   reads differently (`mastla`). Only produced by [`Engine::Earley`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WordDialect {
+    #[default]
+    Standard,
+    Obsolete,
 }
 
 /// Which morphology rules produced an analysis.
@@ -87,7 +127,7 @@ pub enum Dialect {
     /// camxes morphology grammar, PEG-preferred reading (both engines).
     Camxes,
     /// CLL (Chapters 3–4) morphology from tergenzalvi: the older dialect,
-    /// e.g. obsolete fu'ivla such as `matriocka` (Earley engine only).
+    /// e.g. obsolete fu'ivla such as `kuarka` (Earley engine only).
     Cll,
     /// camxes grammar rules, but a derivation the PEG cannot reach because it
     /// commits to an earlier alternative (Earley engine only, last resort).
@@ -108,6 +148,11 @@ impl Morphology {
             .iter()
             .map(|w| (w.text.to_ascii_lowercase(), w.class))
             .collect()
+    }
+
+    /// True when any word is obsolete (see [`WordDialect`]).
+    pub fn has_obsolete(&self) -> bool {
+        self.words.iter().any(MorphWord::is_obsolete)
     }
 
     /// Compact rendering, e.g. `le/cmavo nu/cmavo klama/gismu`.

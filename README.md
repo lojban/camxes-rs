@@ -103,8 +103,29 @@ camxes-rs = { version = "0.1.6", features = ["earley"] }
 lookahead and ordered-choice preference) and falls back to the CLL morphology
 of [tergenzalvi](https://github.com/lagleki/tergenzalvi), so it accepts both
 the camxes dialect and the older CLL dialect (obsolete dictionary words such as
-`matriocka` that the PEG engine rejects). For words the PEG accepts, both
+`kuarka` that the PEG engine rejects). For words the PEG accepts, both
 engines return the same segmentation and word classes.
+
+### Standard vs obsolete words
+
+Each word of a result carries a rule-based `word_dialect`: `Standard` when the
+standard camxes morphology rules accept the word with that class, `Obsolete`
+when only the older CLL (Chapters 3–4) rules accept it. No dictionary lookup is
+involved, so made-up words are classified the same way:
+
+```rust
+use camxes_rs::morphology::{analyze, Engine};
+
+let m = analyze("lojbo zei kuarbli", Engine::Earley).unwrap();
+let labels: Vec<String> = m.words.iter().map(|w| w.type_label()).collect();
+assert_eq!(labels, ["gismu", "cmavo", "obsolete fu'ivla"]);
+```
+
+Typical obsolete forms: on-glide diphthongs `iV`/`uV` inside brivla and names
+(`kuarka`, `tiuanJOUS`), `n` before an affricate (`djinundji`; allowed by CLL
+§3.7, banned by camxes), diphthong + apostrophe + vowel (`gondii'i`) and
+`CiV'V'V` cmavo (`cie'a'u`). Gismu rules are the same in both dialects, so no
+gismu is ever obsolete. Words the PEG engine accepts are always standard.
 
 Corpus check and benchmark over all lensisku headwords (`wiki` page-title
 entries are excluded):
@@ -115,8 +136,10 @@ cargo run --release --features earley --example morphology_corpus -- --raw
 python3 scripts/fetch_lensisku_corpus.py   # refresh tests/data
 ```
 
-`tests/data/morphology-parity.tsv` documents the expected morphology and each
-engine's acceptance for every headword; the test asserts both engines match it.
+`tests/data/morphology-parity.tsv` documents the expected morphology (with
+obsolete flags), each engine's acceptance, the rule-based dialect, and whether
+the dictionary's `obsolete` label agrees with it (`label_check`) for every
+headword; the test asserts both engines match it.
 After an intended change, regenerate it with
 `CAMXES_BLESS_PARITY=1 cargo test --release --features earley --test dictionary_corpus`
 and review the diff. The example also writes a per-word report to
