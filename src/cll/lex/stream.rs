@@ -1058,11 +1058,9 @@ mod tests {
 
     #[test]
     fn continuous_laplas_breaks_to_la_plas() {
-        // §4.8: invalid name laplas. would look like la plas. camxes has no
-        // la/lai/doi ban (C19 is not applied in camxes-rs), so `laplas` is
-        // one name.
+        // §4.8: invalid name laplas. would look like la plas.
         let r = segment_stream("laplas");
-        assert_eq!(texts(&r), vec!["laplas"], "{r:?}");
+        assert_eq!(texts(&r), vec!["la", "plas"], "{r:?}");
         assert!(r.tokens.iter().all(|t| t.result.accepted), "{r:?}");
     }
 

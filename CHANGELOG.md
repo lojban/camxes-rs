@@ -25,12 +25,13 @@ with a major bump rather than claiming compatibility with the 1.x API.
   (`cll`) and nothing else. Morphology: Earley-parsed CFG word shapes
   (`src/cll/cfg/grammar.rs`) + CLL constraint filters + stream segmentation,
   with tergenzalvi's `MorphClass` mapped to the camxes word types
-  (`cll::camxes::word_class`). Syntax: the CLL Chapter 21 EBNF
+  (`word_class` in `src/morphology/camxes.rs`). Syntax: the CLL Chapter 21 EBNF
   (`src/cll/data/cll21.ebnf`) over selma'o tokens from `cmavo_selmaho.tsv`,
   with elidable terminators; trees use the Chapter 21 rule names. It gives
   the same word split and classes as the PEG engine on every PEG-accepted
-  dictionary headword except 7 documented camxes/CLL differences
-  (`KNOWN_DIFFERENCES` in `tests/dictionary_corpus.rs`), and also accepts the
+  dictionary headword except 262 documented camxes/CLL differences
+  (`tests/data/known-differences.tsv`, README "Differences between the PEG
+  (camxes) and Earley (CLL) engines"), and also accepts the
   older CLL dialect (obsolete words such as `kuarka`; note that the
   dictionary also labels standard-form words such as `matriocka` obsolete).
 - Rule-based obsolete-dialect flag per word: `MorphWord::word_dialect`
@@ -38,7 +39,7 @@ with a major bump rather than claiming compatibility with the 1.x API.
   `MorphWord::type_label` (e.g. `obsolete fu'ivla`) and
   `Morphology::has_obsolete`. A word is obsolete when the CLL Chapter 3–4
   rules accept it but it breaks the camxes syllable rules (a port of camxes
-  `syllables` / `zifcme`, `cll::camxes::is_obsolete_form`) — no word lists
+  `syllables` / `zifcme`, `is_obsolete_form` in `src/morphology/camxes.rs`) — no word lists
   are involved, so new words are classified too (on-glide diphthongs in brivla/names such as `kuarka`, `n` before an
   affricate as in `djinundji`, `CiV'V'V` cmavo such as `cia'o'e`, ...). In a
   zei-lujvo only the obsolete component is flagged. The PEG engine only
@@ -65,8 +66,8 @@ with a major bump rather than claiming compatibility with the 1.x API.
   delimiter words around one `FOREIGN` node). (Before
   this, the PEG engine's greedy repetition swallowed the closing delimiter
   and every `zoi` quote was rejected.)
-- `cll` module (feature `earley`): vendored copy of tergenzalvi (commit
-  e07f176, same author, included under this crate's MIT license) providing the CLL morphology and cmavo lexicon,
+- `cll` module (feature `earley`): vendored copy of tergenzalvi (kept
+  identical to its `src/`, see `scripts/check_cll_sync.sh`; same author, included under this crate's MIT license) providing the CLL morphology and cmavo lexicon,
   so the crate has no git dependency and can be published.
 - `grammars::LOJBAN_MORPHOLOGY_GRAMMAR` (previously only in the example).
 - README rewritten to document both engines (layout, formalisms, usage,
@@ -135,19 +136,27 @@ with a major bump rather than claiming compatibility with the 1.x API.
   quotes out before morphology (CLL 19.10): the body is one opaque `FOREIGN`
   lexeme, the quote closes at the first word equal to the delimiter, and an
   unclosed or mismatched quote is a lexical gap (rejected).
-- The vendored CLL morphology has marked *camxes extensions (not CLL)* so
-  that its word types agree with camxes (listed in `src/cll/mod.rs`):
-  camxes cmavo shapes (vowel and `y` chains, `i`/`u` glides), the camxes
-  slinku'i test, form-based lujvo segmentation with the `CVVr` hyphen, no
-  `la`/`lai`/`doi` ban in names (C19 not applied), consonant-only names,
-  fu'ivla with a late cluster, "a cmavo followed by words is not a brivla",
-  comma pauses and `y`-hyphen lujvo (`src/cll/camxes.rs`); in the Chapter 21
-  lexer a digit is a `PA` cmavo.
+- The vendored CLL code in `src/cll` is identical to tergenzalvi's `src/`
+  (apart from crate paths and data-file locations; checked by
+  `scripts/check_cll_sync.sh`) and has no camxes-specific behaviour: earlier
+  camxes extensions that contradict the CLL text were removed (no
+  `la`/`lai`/`doi` ban exemption, fu'ivla need a cluster in the first five
+  letters, no `CVVr` hyphen after a non-initial CVV rafsi, no on-glide right
+  after a vowel in fu'ivla, no comma pauses or `y`-hyphen lujvo, no
+  consonant-only names). Gap fills where the CLL is silent (experimental
+  vowel-chain cmavo, apostrophe chains, form-based lujvo segmentation with
+  the §4.5 restrictions, the literal slinku'i test, the §4.6/§4.7 cmavo
+  break-up rule, digits as `PA`) are shared with tergenzalvi. The mapping
+  to camxes word types and the obsolete-form rule moved to
+  `src/morphology/camxes.rs`. The 262 PEG-accepted headwords on which the
+  engines now differ are listed by category in
+  `tests/data/known-differences.tsv` and in the README.
 - The Chapter 21 lexer no longer splits an unknown cmavo before a vowel
   (`co'oi` was read as `co'o` + `i`; vowel-initial cmavo need a pause).
 - `syntax::parse` with `Engine::Earley` rejects a text containing a word
   the CLL morphology cannot analyse (the Chapter 21 lexer used to drop such
-  words and parse the rest), and a character that is not Lojban
+  words and parse the rest; `cll::grammar::parse_text` now refuses such
+  texts itself, and skips punctuation-only tokens such as `-`), and a character that is not Lojban
   orthography outside a `zoi`/`la'o` body (the CLL normalizer used to drop
   it, reading `valsi---` as `valsi`).
 - During 2.0.0 development `Engine::Earley` first ran the camxes PEG

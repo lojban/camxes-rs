@@ -1,0 +1,269 @@
+# PEG-accepted dictionary headwords on which the Earley (CLL) engine differs.
+# Columns: word, category, Earley result ("rejected" or the rendered morphology).
+# Categories and their reasons are in DIFFERENCE_CATEGORIES in
+# tests/dictionary_corpus.rs and in the README section "Differences between
+# the PEG (camxes) and Earley (CLL) engines". The test fails on any
+# disagreement not listed here (or with another Earley result), and on any
+# listed word that no longer differs.
+ciztolnei	medial-pair	rejected
+refgau	medial-pair	rejected
+vamzma	medial-pair	rejected
+y	hesitation	rejected
+yyy	hesitation	rejected
+aierne	vowel-initial-pause	aierne/fu'ivla
+OTa,uas	comma	OTa,uas/cmevla
+bodga,ias	comma	bodga,ias/cmevla
+klanrniut,ni	comma	rejected
+lijdrba'a,i	comma	lijdrba'a,i/fu'ivla
+nu,IORK	comma	nu,IORK/cmevla
+tai,UAN	comma	tai,UAN/cmevla
+xali,uyd	comma	xali,uyd/cmevla
+doitclan	name-la	doi/cmavo tclan/cmevla
+katajinadelazariRAdek	name-la	rejected
+kuualalumpur	name-la	rejected
+lat	name-la	rejected
+lauDZIS	name-la	rejected
+laus	name-la	rejected
+tigbalan	name-la	rejected
+volapuk	name-la	vo/cmavo la/cmavo puk/cmevla
+b zei p zei f zei k	consonant-name	rejected
+l zei l zei g	consonant-name	rejected
+ng bu	consonant-name	rejected
+t	consonant-name	rejected
+xm	consonant-name	rejected
+blaia	vowel-grouping	rejected
+briii	vowel-grouping	rejected
+ciskrpeuedji	vowel-grouping	rejected
+cmaiueiorze'aiuei	vowel-grouping	rejected
+feljoua	vowel-grouping	rejected
+gleua	vowel-grouping	rejected
+gondiii'i	vowel-grouping	rejected
+gruue	vowel-grouping	rejected
+gugdeuei	vowel-grouping	rejected
+iuctcouo	vowel-grouping	rejected
+jboia	vowel-grouping	rejected
+jboiu	vowel-grouping	rejected
+jdaio	vowel-grouping	rejected
+jmaia	vowel-grouping	rejected
+juntoua	vowel-grouping	rejected
+onmatopo'eia	vowel-grouping	rejected
+paxtoua	vowel-grouping	rejected
+proteuu	vowel-grouping	rejected
+sincrboua	vowel-grouping	rejected
+sirjrneuei	vowel-grouping	rejected
+softseuo	vowel-grouping	rejected
+sriuu	vowel-grouping	rejected
+tciceua	vowel-grouping	rejected
+tciuaua	vowel-grouping	rejected
+traii	vowel-grouping	rejected
+tsamoua	vowel-grouping	rejected
+tsauai	vowel-grouping	rejected
+vluuo	vowel-grouping	rejected
+xruii	vowel-grouping	rejected
+zangaleua	vowel-grouping	rejected
+fau'arma	fuhivla-cluster	rejected
+gau'olca	fuhivla-cluster	rejected
+ku'aidzi	fuhivla-cluster	rejected
+lau'imsa	fuhivla-cluster	rejected
+mau'ucmo	fuhivla-cluster	rejected
+mau'ufri	fuhivla-cluster	rejected
+mla'aiana	fuhivla-cluster	rejected
+nau'atli	fuhivla-cluster	rejected
+nijnanidouaga	fuhivla-cluster	rejected
+pi'eitci	fuhivla-cluster	rejected
+ra'oijbo	fuhivla-cluster	rejected
+ri'oirkai	fuhivla-cluster	rejected
+ru'ainga	fuhivla-cluster	rejected
+xa'aucmo	fuhivla-cluster	rejected
+xai'otso	fuhivla-cluster	rejected
+cmata'orskami	hyphen-not-required	cmata'orskami/fu'ivla
+cuktaima'arbi'i	hyphen-not-required	cuktaima'arbi'i/fu'ivla
+di'irdji	hyphen-not-required	di'irdji/fu'ivla
+geirzdi	hyphen-not-required	geirzdi/fu'ivla
+jacra'erbi'u	hyphen-not-required	jacra'erbi'u/fu'ivla
+ju'erna'ircinki	hyphen-not-required	ju'erna'ircinki/fu'ivla
+muvla'arpu'i	hyphen-not-required	muvla'arpu'i/fu'ivla
+nalrelpi'irna'u	hyphen-not-required	nalrelpi'irna'u/fu'ivla
+relpi'irna'u	hyphen-not-required	relpi'irna'u/fu'ivla
+se'ircti	hyphen-not-required	se'ircti/fu'ivla
+selda'ergau	hyphen-not-required	selda'ergau/fu'ivla
+selma'ergi'a	hyphen-not-required	selma'ergi'a/fu'ivla
+selzgaka'erfau	hyphen-not-required	selzgaka'erfau/fu'ivla
+smuki'irxu'a	hyphen-not-required	smuki'irxu'a/fu'ivla
+sriba'armifra	hyphen-not-required	sriba'armifra/fu'ivla
+toirsti	hyphen-not-required	toirsti/fu'ivla
+tolkaunracli	hyphen-not-required	tolkaunracli/fu'ivla
+tronarka'erfenki	hyphen-not-required	tronarka'erfenki/fu'ivla
+zanrainrai	hyphen-not-required	zanrainrai/fu'ivla
+zilgu'orgau	hyphen-not-required	zilgu'orgau/fu'ivla
+.eiksyselrirni	non-cll-rafsi	rejected
+.eiksyspe	non-cll-rafsi	rejected
+abniienybau	non-cll-rafsi	abniie/fu'ivla ny/cmavo bau/cmavo
+abniienygu'e	non-cll-rafsi	abniie/fu'ivla ny/cmavo gu'e/cmavo
+abniienyru'u	non-cll-rafsi	abniie/fu'ivla ny/cmavo ru'u/cmavo
+actce'ybau	non-cll-rafsi	rejected
+afxanyru'u	non-cll-rafsi	afxa/fu'ivla ny/cmavo ru'u/cmavo
+aictygu'e	non-cll-rafsi	rejected
+aktygau	non-cll-rafsi	rejected
+almybo'o	non-cll-rafsi	rejected
+alzaitygrasu	non-cll-rafsi	alzai/fu'ivla ty/cmavo grasu/gismu
+angolygu'e	non-cll-rafsi	ango/fu'ivla ly/cmavo gu'e/cmavo
+atmysekpu	non-cll-rafsi	rejected
+batkyuidje	non-cll-rafsi	rejected
+baxmasi'ygu'e	non-cll-rafsi	baxma/gismu si'y/cmavo gu'e/cmavo
+begy'opfete	non-cll-rafsi	rejected
+bejnino'ygu'e	non-cll-rafsi	bejni/gismu no'y/cmavo gu'e/cmavo
+bemymantodi	non-cll-rafsi	bemymanto/lujvo di/cmavo
+berlaua'ygu'e	non-cll-rafsi	rejected
+bolviia'ygu'e	non-cll-rafsi	rejected
+bonkori'ygu'e	non-cll-rafsi	bonko/gismu ri'y/cmavo gu'e/cmavo
+braxeky'opfete	non-cll-rafsi	rejected
+brodyiolpe	non-cll-rafsi	rejected
+cankyuidje	non-cll-rafsi	rejected
+cimny'efku	non-cll-rafsi	rejected
+cimnyterjuntasucyxe'idaiseldi'e	non-cll-rafsi	cimnyterjunta/lujvo sucyxe'idaiseldi'e/lujvo
+citky'utka	non-cll-rafsi	rejected
+cmaplinykemjinrcaibyca'u	non-cll-rafsi	cmapli/lujvo ny/cmavo kemjinrcai/fu'ivla by/cmavo ca'u/cmavo
+cuklitry'utka	non-cll-rafsi	rejected
+dutyku'arka	non-cll-rafsi	du/cmavo ty/cmavo ku'arka/fu'ivla
+eiksy'aigryspe	non-cll-rafsi	rejected
+eiksyspeselrirni	non-cll-rafsi	rejected
+eiksyspespe	non-cll-rafsi	rejected
+ernygu'e	non-cll-rafsi	rejected
+ernyjoibrito	non-cll-rafsi	rejected
+ernyjoiritkelto	non-cll-rafsi	rejected
+ervyste	non-cll-rafsi	rejected
+facyborselkaizilkanpyborselkaimau'yraunzu	non-cll-rafsi	facyborselkaizilkanpyborselkai/lujvo mau'y/cmavo raunzu/fu'ivla
+faursygu'e	non-cll-rafsi	rejected
+faursylolgai	non-cll-rafsi	rejected
+faursyru'u	non-cll-rafsi	rejected
+ficystodraunju	non-cll-rafsi	ficysto/lujvo draunju/fu'ivla
+fuky'utka	non-cll-rafsi	rejected
+gamseti'yra'a	non-cll-rafsi	gamse/gismu ti'y/cmavo ra'a/cmavo
+gasny'olca	non-cll-rafsi	rejected
+gimy'inda	non-cll-rafsi	rejected
+gosymantodi	non-cll-rafsi	gosymanto/lujvo di/cmavo
+iodnyjvubasixu	non-cll-rafsi	rejected
+iorbybau	non-cll-rafsi	rejected
+islenskygu'e	non-cll-rafsi	rejected
+itku'ilybau	non-cll-rafsi	itku'i/fu'ivla ly/cmavo bau/cmavo
+itkygau	non-cll-rafsi	rejected
+iuktekybau	non-cll-rafsi	iukte/fu'ivla ky/cmavo bau/cmavo
+jatny'utka	non-cll-rafsi	rejected
+jibytreicyfamti	non-cll-rafsi	ji/cmavo by/cmavo treicyfamti/lujvo
+jinrcaibyca'u	non-cll-rafsi	jinrcai/fu'ivla by/cmavo ca'u/cmavo
+jorny'utka	non-cll-rafsi	rejected
+judryuidje	non-cll-rafsi	rejected
+kady'opfete	non-cll-rafsi	rejected
+kakcalotylakse	non-cll-rafsi	kakca/gismu lotylakse/lujvo
+kalty'utka	non-cll-rafsi	rejected
+kardyserlaxi	non-cll-rafsi	kardyserla/lujvo xi/cmavo
+kartilagyfi'e	non-cll-rafsi	karti/gismu lagyfi'e/lujvo
+kartuli'yru'u	non-cll-rafsi	kartu/gismu li'y/cmavo ru'u/cmavo
+katcitky'utka	non-cll-rafsi	rejected
+kazrybitnrkrati	non-cll-rafsi	rejected
+kexmairybau	non-cll-rafsi	kexmai/lujvo ry/cmavo bau/cmavo
+kexmairygu'e	non-cll-rafsi	kexmai/lujvo ry/cmavo gu'e/cmavo
+kexmairyru'u	non-cll-rafsi	kexmai/lujvo ry/cmavo ru'u/cmavo
+kleivmykai	non-cll-rafsi	rejected
+ku'arkydicka'u	non-cll-rafsi	rejected
+kutysetmima	non-cll-rafsi	kutysetmi/lujvo ma/cmavo
+kutyuenzi	non-cll-rafsi	rejected
+lacy'inda	non-cll-rafsi	rejected
+laitfi'ygu'e	non-cll-rafsi	rejected
+laufsyru'u	non-cll-rafsi	rejected
+li'etfygu'e	non-cll-rafsi	rejected
+lolni'arkosmyca'arnerkalri	non-cll-rafsi	rejected
+mi'anmygu'e	non-cll-rafsi	rejected
+mi'anmysalta	non-cll-rafsi	rejected
+mindy'utka	non-cll-rafsi	rejected
+mongolo'yru'u	non-cll-rafsi	mongo/gismu lo'y/cmavo ru'u/cmavo
+mudgranyjvepexybi'urmai	non-cll-rafsi	mudgranyjvepe/lujvo xy/cmavo bi'urmai/lujvo
+nacyuensni	non-cll-rafsi	rejected
+nacyuenzi	non-cll-rafsi	rejected
+nilmulyuidje	non-cll-rafsi	rejected
+norykarncau	non-cll-rafsi	no/cmavo ry/cmavo karncau/fu'ivla
+nunselti'irgubycu'a	non-cll-rafsi	nunselti'irgu/fu'ivla by/cmavo cu'a/cmavo
+nunselti'irgubycu'u	non-cll-rafsi	nunselti'irgu/fu'ivla by/cmavo cu'u/cmavo
+obzekcygu'e	non-cll-rafsi	rejected
+olcyde'a	non-cll-rafsi	rejected
+olju'ytaifu'i	non-cll-rafsi	rejected
+oljytamfu'i	non-cll-rafsi	rejected
+ornyle'u	non-cll-rafsi	rejected
+pafy'utka	non-cll-rafsi	rejected
+pavmombesy'utka	non-cll-rafsi	rejected
+pavmompazy'utka	non-cll-rafsi	rejected
+pavmompazy'utka'au'ypanzi	non-cll-rafsi	rejected
+pavmompazy'utka'ypanzi	non-cll-rafsi	rejected
+pavmomtixy'utka	non-cll-rafsi	rejected
+pavyslakycmavy'inda	non-cll-rafsi	rejected
+pebyuidje	non-cll-rafsi	rejected
+pedy'utka	non-cll-rafsi	rejected
+pegyuenzi	non-cll-rafsi	rejected
+pendy'utka	non-cll-rafsi	rejected
+piljy'efku	non-cll-rafsi	rejected
+pimxejy'opfete	non-cll-rafsi	rejected
+prejumydu'a'y'utka	non-cll-rafsi	rejected
+prulamdjedy'utka'au	non-cll-rafsi	rejected
+rauntysmimabru	non-cll-rafsi	rejected
+rekyuidje	non-cll-rafsi	rejected
+reltranyselcy'anmona'yborbi'okemyji'eslerango	non-cll-rafsi	rejected
+reltranyselcy'anmona'yborbi'okemymulslemijyji'e	non-cll-rafsi	rejected
+rely'orsi	non-cll-rafsi	rejected
+rirny'utka	non-cll-rafsi	rejected
+rirny'utka zei treicytunba	non-cll-rafsi	rejected
+rirny'utka'au	non-cll-rafsi	rejected
+roimnybau	non-cll-rafsi	rejected
+rusysinjabu	non-cll-rafsi	rusysinja/lujvo bu/cmavo
+sarnyskrantykemyzgitci	non-cll-rafsi	rejected
+sarnyskrantyzgitci	non-cll-rafsi	rejected
+selpiljy'efku	non-cll-rafsi	rejected
+selprejumydu'a'y'utka	non-cll-rafsi	rejected
+selterselbenjy'utka	non-cll-rafsi	rejected
+selterselcple'ijdy'utka	non-cll-rafsi	rejected
+singapuryglixrebau	non-cll-rafsi	singa/gismu puryglixrebau/lujvo
+sinxala'yru'u	non-cll-rafsi	sinxa/gismu la'y/cmavo ru'u/cmavo
+sity'utka	non-cll-rafsi	rejected
+sity'utkaro	non-cll-rafsi	rejected
+skicyuidje	non-cll-rafsi	rejected
+splurtakni'yxau	non-cll-rafsi	rejected
+srepxrvatybau	non-cll-rafsi	srepxrva/fu'ivla ty/cmavo bau/cmavo
+stapykembalmamtakepcolflalu	non-cll-rafsi	stapykembalmamta/lujvo kepcolflalu/lujvo
+su'undybau	non-cll-rafsi	rejected
+taivnyru'u	non-cll-rafsi	rejected
+tarby'asna	non-cll-rafsi	rejected
+tcityuidje	non-cll-rafsi	rejected
+terkraunydze	non-cll-rafsi	rejected
+terytraduki'yterytraduki	non-cll-rafsi	terytradu/lujvo ki'y/cmavo terytradu/lujvo ki/cmavo
+tolykarncau	non-cll-rafsi	to/cmavo ly/cmavo karncau/fu'ivla
+tolyli'armi	non-cll-rafsi	to/cmavo ly/cmavo li'armi/fu'ivla
+tronarka'erfenkyterbi'a	non-cll-rafsi	rejected
+tsuuomnygu'e	non-cll-rafsi	rejected
+tuvypaupna	non-cll-rafsi	tu/cmavo vy/cmavo paupna/fu'ivla
+tuvytaivno	non-cll-rafsi	tu/cmavo vy/cmavo taivno/fu'ivla
+uaigry'eiksyspe	non-cll-rafsi	rejected
+uaigrynolraitru	non-cll-rafsi	rejected
+uaigryspe	non-cll-rafsi	rejected
+uatmalygu'e	non-cll-rafsi	uatma/fu'ivla ly/cmavo gu'e/cmavo
+uencygai	non-cll-rafsi	rejected
+uksydragau	non-cll-rafsi	rejected
+velski'y'esku	non-cll-rafsi	rejected
+xaby'efku	non-cll-rafsi	rejected
+xadni'arno'ybirka	non-cll-rafsi	rejected
+xadni'arno'ytuple	non-cll-rafsi	rejected
+xadypaurbasti	non-cll-rafsi	xa/cmavo dy/cmavo paurbasti/lujvo
+xai'otsyru'u	non-cll-rafsi	rejected
+xanyuidje	non-cll-rafsi	rejected
+xasy'atku'ila	non-cll-rafsi	rejected
+xasy'atkuuila	non-cll-rafsi	rejected
+xeky'opfete	non-cll-rafsi	rejected
+ximblai'yma'a	non-cll-rafsi	rejected
+xre'abniienybau	non-cll-rafsi	xre'abniie/fu'ivla ny/cmavo bau/cmavo
+xu'unrymutcrai	non-cll-rafsi	rejected
+xuky'opfete	non-cll-rafsi	rejected
+xunrymutcrai	non-cll-rafsi	rejected
+xunysinjabu	non-cll-rafsi	xunysinja/lujvo bu/cmavo
+zarbaijyru'u	non-cll-rafsi	zarbai/lujvo jy/cmavo ru'u/cmavo
+zasyku'arka	non-cll-rafsi	za/cmavo sy/cmavo ku'arka/fu'ivla
+zeingamyba'o	non-cll-rafsi	zeinga/fu'ivla my/cmavo ba'o/cmavo
+zeingamyfamba'o	non-cll-rafsi	zeinga/fu'ivla my/cmavo famba'o/lujvo

@@ -8,7 +8,8 @@
 //! * Every headword the PEG engine accepts must get the same word split and
 //!   classes from the Earley engine (the vendored tergenzalvi CLL pipeline
 //!   with its camxes-compatibility rules, see `src/cll/camxes.rs`), except
-//!   the documented [`KNOWN_DIFFERENCES`], where camxes and CLL morphology
+//!   the documented known differences (`tests/data/known-differences.tsv`,
+//!   categories in [`DIFFERENCE_CATEGORIES`]), where camxes and CLL morphology
 //!   genuinely disagree.
 //! * The Earley engine must also accept the headwords that the PEG engine
 //!   rejects (mostly "obsolete" CLL-dialect fu'ivla), except the short list
@@ -66,41 +67,100 @@ const INVALID_EVERYWHERE: &[(&str, &str)] = &[
     ("xa!", "`!` is not Lojban orthography"),
 ];
 
-/// PEG-accepted headwords on which the Earley engine (CLL pipeline) gives
-/// a different split or class, or rejects, with the rule that blocks
-/// agreement. Each one is a place where the camxes PEG grammar and CLL
-/// Chapter 4 morphology read the word differently; the test fails if one of
-/// them starts to agree (drop it then).
-const KNOWN_DIFFERENCES: &[(&str, &str)] = &[
+/// Categories of PEG-accepted headwords on which the Earley engine (CLL
+/// pipeline) gives a different split or class, or rejects: `(code, kind,
+/// reason)`. `kind` says who is right: `camxes bug` (camxes accepts what
+/// explicit CLL text forbids), `CLL rule` (CLL text decides it; camxes
+/// follows later usage), `accepted difference` (both readings are defensible,
+/// the user chose CLL) or `camxes extension` (camxes has a form that CLL does
+/// not describe). The README section "Differences between the PEG (camxes)
+/// and Earley (CLL) engines" gives the same reasons with examples.
+const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
     (
-        "ciztolnei",
-        "medial `zt` mixes voiced and unvoiced (CLL 3.7 / C10); camxes checks only the initial clusters of a fu'ivla",
+        "medial-pair",
+        "camxes bug",
+        "medial consonant pair forbidden by CLL §3.7 (`zt`, `fg`, `mz`); camxes checks only some clusters",
     ),
     (
-        "refgau",
-        "medial `fg` mixes unvoiced and voiced (CLL 3.7 / C10); camxes allows it",
+        "hesitation",
+        "CLL rule",
+        "`y` is a hesitation that CLL §19.14 requires to have pauses before and after; camxes reads it as a cmavo",
     ),
     (
-        "vamzma",
-        "medial `mz` is not a permissible medial pair in CLL 3.7; camxes allows it",
+        "vowel-initial-pause",
+        "camxes bug",
+        "CLL §4.9 rule 3: a word starting with a vowel must be preceded by a pause, so the camxes split before a vowel-initial word is invalid",
     ),
     (
-        "y",
-        "a lone `y` is a hesitation needing a pause in CLL (C06); camxes accepts it as a cmavo",
+        "comma",
+        "accepted difference",
+        "CLL §3.3: a comma is a syllable break, not a word boundary; camxes splits words at commas",
     ),
     (
-        "yyy",
-        "CLL: a hesitation run needs pauses (C06); camxes splits it into `y` + `yy`",
+        "name-la",
+        "CLL rule",
+        "CLL §4.8: a name must not contain `la`, `lai` or `doi` (except after a consonant); Earley rejects it or reads the cmavo out of it",
     ),
     (
-        "aierne",
-        "camxes reads cmavo `a` + `ierne` (stress-based split); the CLL stream segmenter gives another split",
+        "consonant-name",
+        "camxes extension",
+        "consonant-only names (camxes `zifcme`, used for lerfu); CLL §4.8 names are syllabic words and CLL has no consonant-only form",
     ),
     (
-        "lijdrba'a,i",
-        "camxes splits at the comma before the final `i` (`lijdrba'a` + `i`); CLL treats the comma as a syllable break inside the word",
+        "vowel-grouping",
+        "CLL rule",
+        "CLL §3.4: vowels other than the diphthongs need an apostrophe or comma between them (\"a comma must be used\" for other groupings); camxes allows on-glides after a vowel",
+    ),
+    (
+        "fuhivla-cluster",
+        "CLL rule",
+        "CLL §4.7 rule 1: a fu'ivla must have a consonant cluster in the first five letters; camxes allows a later cluster",
+    ),
+    (
+        "hyphen-not-required",
+        "CLL rule",
+        "CLL §4.6: \"It is illegal to add a hyphen at a place that is not required\"; an r/n after a non-initial CVV rafsi is not a hyphen, so the word is not a lujvo (Earley: fu'ivla)",
+    ),
+    (
+        "non-cll-rafsi",
+        "CLL rule",
+        "camxes lujvo built from pieces that are not CLL §4.5 rafsi forms (vowel-initial pieces, CV'V/CVV + `y`, `'` after `y`, CVCV finals, 5-letter rafsi not at the end, 4-letter rafsi without `y`, CVV rafsi with a non-diphthong); per §4.6/§4.7 Earley rejects the word or breaks it into the words it falls apart into",
     ),
 ];
+
+const KNOWN_DIFFERENCES_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/data/known-differences.tsv"
+);
+
+/// `tests/data/known-differences.tsv`: `word`, category code (from
+/// [`DIFFERENCE_CATEGORIES`]) and the Earley result (`rejected` or the
+/// rendered morphology). A headword whose engines disagree must be listed
+/// with its exact Earley result; an entry that no longer differs fails too.
+fn known_differences() -> &'static std::collections::BTreeMap<String, (String, String)> {
+    static KNOWN: OnceLock<std::collections::BTreeMap<String, (String, String)>> = OnceLock::new();
+    KNOWN.get_or_init(|| {
+        let text = std::fs::read_to_string(KNOWN_DIFFERENCES_PATH).expect("known-differences.tsv");
+        let mut map = std::collections::BTreeMap::new();
+        for line in text
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.is_empty())
+        {
+            let cols: Vec<&str> = line.split('\t').collect();
+            assert_eq!(cols.len(), 3, "bad known-differences row: {line}");
+            assert!(
+                DIFFERENCE_CATEGORIES.iter().any(|(c, _, _)| *c == cols[1]),
+                "unknown category in known-differences row: {line}"
+            );
+            let old = map.insert(
+                cols[0].to_string(),
+                (cols[1].to_string(), cols[2].to_string()),
+            );
+            assert!(old.is_none(), "duplicate known-differences row: {line}");
+        }
+        map
+    })
+}
 
 struct Entry {
     word: String,
@@ -278,11 +338,11 @@ fn morphology_parity_matches_committed_expectations() {
             .collect::<Vec<_>>()
             .join("\n")
     );
-    let known: BTreeSet<&str> = KNOWN_DIFFERENCES.iter().map(|(w, _)| *w).collect();
+    let known = known_differences();
     let unexpected: Vec<&String> = actual
         .iter()
         .filter(|r| r.contains("\tdiffers\t"))
-        .filter(|r| !known.contains(r.split('\t').next().unwrap_or("")))
+        .filter(|r| !known.contains_key(r.split('\t').next().unwrap_or("")))
         .collect();
     assert!(
         unexpected.is_empty(),
@@ -299,7 +359,9 @@ fn obsolete_dialect_is_rule_based() {
     let (mut obs_ok, mut obs_std, mut std_obs) = (Vec::new(), Vec::new(), Vec::new());
     for (e, (peg, earley)) in entries.iter().zip(outcomes) {
         let Some(m) = earley else { continue };
-        if peg.is_some() == m.has_obsolete() {
+        // Known differences are other words (another split), so the
+        // camxes rules do not describe them.
+        if peg.is_some() == m.has_obsolete() && !known_differences().contains_key(&e.word) {
             bad.push(format!(
                 "{} (peg ok: {}): {}",
                 e.word,
@@ -339,13 +401,14 @@ fn dictionary_headwords_morphology() {
     );
 
     let invalid: BTreeSet<&str> = INVALID_EVERYWHERE.iter().map(|(w, _)| *w).collect();
-    let known: BTreeSet<&str> = KNOWN_DIFFERENCES.iter().map(|(w, _)| *w).collect();
+    let known = known_differences();
     let mut known_seen = BTreeSet::new();
     let (mut peg_ok, mut agree, mut earley_only) = (0, 0, 0);
     let (mut obsolete, mut obsolete_earley, mut obsolete_peg) = (0, 0, 0);
     let mut disagreements = Vec::new();
     let mut unexpected_failures = Vec::new();
     let mut stale_invalid = Vec::new();
+    let mut per_category: std::collections::BTreeMap<&str, usize> = Default::default();
 
     for (e, (peg, earley)) in entries.iter().zip(outcomes) {
         if e.word_type.starts_with("obsolete") {
@@ -354,39 +417,33 @@ fn dictionary_headwords_morphology() {
             obsolete_earley += usize::from(earley.is_some());
         }
         match (peg, earley) {
-            (Some(p), Some(q)) => {
+            (Some(p), q) => {
                 peg_ok += 1;
-                if p.signature() == q.signature() {
+                if q.as_ref().is_some_and(|q| p.signature() == q.signature()) {
                     agree += 1;
-                } else if known.contains(e.word.as_str()) {
-                    known_seen.insert(e.word.as_str());
-                    println!(
-                        "known difference {}: peg [{}] earley [{}]",
-                        e.word,
-                        p.render(),
-                        q.render()
-                    );
-                } else {
-                    disagreements.push(format!(
-                        "{}: peg [{}] earley [{}]",
-                        e.word,
-                        p.render(),
-                        q.render()
-                    ));
+                    continue;
                 }
-            }
-            (Some(p), None) if known.contains(e.word.as_str()) => {
-                peg_ok += 1;
-                known_seen.insert(e.word.as_str());
-                println!(
-                    "known difference {}: peg [{}] earley rejected",
-                    e.word,
-                    p.render()
-                );
-            }
-            (Some(p), None) => {
-                peg_ok += 1;
-                disagreements.push(format!("{}: peg [{}] earley rejected", e.word, p.render()));
+                let got = q
+                    .as_ref()
+                    .map_or_else(|| "rejected".to_string(), |q| q.render());
+                match known.get(&e.word) {
+                    Some((category, recorded)) if *recorded == got => {
+                        known_seen.insert(e.word.as_str());
+                        *per_category.entry(category.as_str()).or_default() += 1;
+                        println!("known difference [{category}] {}: peg [{}] earley [{got}]", e.word, p.render());
+                    }
+                    Some((category, recorded)) => disagreements.push(format!(
+                        "{}: peg [{}] earley [{got}], but known-differences.tsv records [{recorded}] ({category})",
+                        e.word,
+                        p.render()
+                    )),
+                    None => disagreements.push(format!(
+                        "{}: peg [{}] earley [{got}]  (new row: {}\t<category>\t{got})",
+                        e.word,
+                        p.render(),
+                        e.word
+                    )),
+                }
             }
             (None, Some(_)) => {
                 earley_only += 1;
@@ -423,11 +480,15 @@ fn dictionary_headwords_morphology() {
         stale_invalid.is_empty(),
         "now accepted, drop from INVALID_EVERYWHERE: {stale_invalid:?}"
     );
-    let stale_known: Vec<&&str> = known.difference(&known_seen).collect();
+    let stale_known: Vec<&String> = known
+        .keys()
+        .filter(|w| !known_seen.contains(w.as_str()))
+        .collect();
     assert!(
         stale_known.is_empty(),
-        "now agree, drop from KNOWN_DIFFERENCES: {stale_known:?}"
+        "no longer differ, drop from known-differences.tsv: {stale_known:?}"
     );
+    println!("known differences by category: {per_category:?}");
     assert_eq!(peg_ok, agree + known.len());
 }
 

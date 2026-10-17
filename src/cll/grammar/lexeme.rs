@@ -98,8 +98,8 @@ fn lex_lojban_region(
     // boundary was explicit (space/`.` — do not re-fuse across those).
     let mut groups: Vec<(Vec<Lexeme>, bool)> = Vec::new();
     for tok in &seg.tokens {
-        // camxes extension (not CLL): each digit is a PA cmavo (camxes
-        // `digit`), so `li 1995` is a number.
+        // Each digit is a PA cmavo, so `li 1995` is a number. CLL is silent
+        // on digits in Lojban text; Ch. 18 reads numerals digit by digit.
         if !tok.text.is_empty() && tok.text.bytes().all(|b| b.is_ascii_digit()) {
             let piece = tok
                 .text
@@ -108,11 +108,17 @@ fn lex_lojban_region(
                     plain_lexeme(
                         &d.to_string(),
                         "PA",
-                        Some("camxes extension: digit = PA".into()),
+                        Some("digit = PA (CLL silent; Ch. 18 digit-by-digit reading)".into()),
                     )
                 })
                 .collect();
             groups.push((piece, tok.explicit_boundary));
+            continue;
+        }
+        // A token with no letters (`-`, `…` in CLL example text) is
+        // punctuation, not a word: skip it without a gap.
+        if !tok.text.bytes().any(|b| b.is_ascii_alphabetic()) {
+            morph_notes.push(format!("skipped non-word token {:?}", tok.text));
             continue;
         }
         if !tok.result.accepted {

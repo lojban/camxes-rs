@@ -2,18 +2,20 @@
 //! as [`crate::cll`]): CFG/Earley shapes, constraint filters and stream
 //! segmentation.
 //!
-//! 1. The text is split at whitespace, written pauses (`.`) and commas that
-//!    camxes reads as pauses ([`camxes::pause_commas`]).
+//! 1. The text is split at whitespace and written pauses (`.`); a comma is
+//!    a syllable break inside a word (CLL §3.3), not a word boundary.
 //! 2. Each piece is first read as one word ([`morph_parse_stream_piece`]),
-//!    then as a `y`-hyphen lujvo ([`camxes::is_y_hyphen_lujvo`]), and
 //!    otherwise segmented by the stream segmenter ([`segment_continuous`]).
-//! 3. Each word gets the camxes word class ([`camxes::word_class`]) and a
-//!    rule-based [`WordDialect`] ([`camxes::is_obsolete_form`]).
+//! 3. Each word gets the camxes word type ([`camxes::word_class`], a mapping
+//!    only) and a rule-based [`WordDialect`] ([`camxes::is_obsolete_form`]).
+//!
+//! Nothing here changes what the CLL pipeline accepts: `crate::cll` is the
+//! same code as tergenzalvi.
 
+use super::camxes;
 use super::{
     split_cmavo_cluster, Dialect, MorphWord, Morphology, MorphologyError, WordClass, WordDialect,
 };
-use crate::cll::camxes;
 use crate::cll::constraints::ConstrainedResult;
 use crate::cll::lex::{morph_parse_stream_piece, segment_continuous, WordClass as CllClass};
 
@@ -61,7 +63,7 @@ pub(super) fn analyze(input: &str) -> Result<Morphology, MorphologyError> {
         }
         let lead_pause = start > 0 && bytes[start - 1] == b'.';
         let trail_pause = i < bytes.len() && bytes[i] == b'.';
-        comma_pieces(input, start, i, lead_pause, trail_pause, &mut words)?;
+        piece(input, start, i, lead_pause, trail_pause, &mut words)?;
     }
     if words.is_empty() {
         return Err(err(0, "no words"));
@@ -75,49 +77,6 @@ pub(super) fn analyze(input: &str) -> Result<Morphology, MorphologyError> {
         words,
         dialect: Dialect::Cll,
     })
-}
-
-/// Split a piece at the commas camxes reads as pauses when every part has a
-/// morphology; otherwise keep the piece whole (the commas are then syllable
-/// breaks).
-fn comma_pieces(
-    input: &str,
-    start: usize,
-    end: usize,
-    lead_pause: bool,
-    trail_pause: bool,
-    out: &mut Vec<MorphWord>,
-) -> Result<(), MorphologyError> {
-    let body = &input[start..end];
-    let cuts = camxes::pause_commas(body);
-    if !cuts.is_empty() {
-        let mut bounds = Vec::with_capacity(cuts.len() + 1);
-        let mut s = 0;
-        for c in cuts {
-            bounds.push((s, c));
-            s = c + 1;
-        }
-        bounds.push((s, body.len()));
-        let last = bounds.len() - 1;
-        let mut local = Vec::new();
-        let ok = bounds.iter().enumerate().all(|(k, &(s, e))| {
-            s < e
-                && piece(
-                    input,
-                    start + s,
-                    start + e,
-                    lead_pause && k == 0,
-                    trail_pause && k == last,
-                    &mut local,
-                )
-                .is_ok()
-        });
-        if ok {
-            out.extend(local);
-            return Ok(());
-        }
-    }
-    piece(input, start, end, lead_pause, trail_pause, out)
 }
 
 fn piece(
@@ -145,18 +104,6 @@ fn piece(
     }
     if let Some(class) = class_of(&whole, body) {
         push(input, start, end, class, out);
-        return Ok(());
-    }
-    let brivla_end = |p: &str| {
-        camxes::is_final_short_rafsi(p)
-            || camxes::is_rafsi_string(p)
-            || matches!(
-                class_of(&morph_parse_stream_piece(p), p),
-                Some(WordClass::Gismu | WordClass::Lujvo | WordClass::Fuhivla)
-            )
-    };
-    if camxes::is_y_hyphen_lujvo(body, brivla_end) {
-        push(input, start, end, WordClass::Lujvo, out);
         return Ok(());
     }
     // Continuous segmentation of the piece.

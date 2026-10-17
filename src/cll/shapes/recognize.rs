@@ -266,12 +266,7 @@ fn recognize_normalized(normalized: String) -> ShapeResult {
 
     // Pure consonant fragments (pairs/triples fixtures) — table predicates only.
     if is_pure_consonant_fragment(bytes) {
-        let mut classes = classify_fragment(bytes);
-        // camxes extension (not CLL): a name may be consonants only (`t`,
-        // `xm`, `ng`), as camxes `zifcme` allows.
-        if bytes.iter().all(|&b| b != b'\'' && b != b',') {
-            classes.insert(MorphClass::Cmevla);
-        }
+        let classes = classify_fragment(bytes);
         return ShapeResult {
             accepted: !classes.is_empty(),
             classes,
@@ -349,11 +344,10 @@ mod tests {
     fn phonotaxis_fragments() {
         assert!(classify("fl").contains(&MorphClass::MedialPair));
         assert!(classify("bl").contains(&MorphClass::InitialPair));
-        // Not permissible pairs; the fragments are only camxes zifcme
-        // (consonant-only names), a camxes extension.
-        for bad in ["bf", "mz", "ndj", "sc"] {
-            assert_eq!(classify(bad), [MorphClass::Cmevla].into(), "{bad}");
-        }
+        assert!(!accept("bf"));
+        assert!(!accept("mz"));
+        assert!(!accept("ndj"));
+        assert!(!accept("sc"));
     }
 
     #[test]

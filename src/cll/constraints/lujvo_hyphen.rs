@@ -5,7 +5,7 @@
 
 use super::{Constraint, ConstraintId, ConstraintMeta, ConstraintStatus, Reject};
 use crate::cll::cfg::CandidateSpan;
-use crate::cll::phonology::is_permissible_medial_pair;
+use crate::cll::phonology::{is_c, is_permissible_medial_pair};
 use crate::cll::shapes::{has_cc_in_first_five_ignoring_y_apostrophe, recognize, MorphClass};
 use crate::cll::tables::{LujvoSegmentation, RafsiLexicon, RafsiShape};
 
@@ -36,11 +36,11 @@ impl Constraint for LujvoHyphen {
 }
 
 fn last_consonant(form: &str) -> Option<u8> {
-    form.bytes().rev().find(|&b| crate::cll::phonology::is_c(b))
+    form.bytes().rev().find(|&b| is_c(b))
 }
 
 fn first_consonant(form: &str) -> Option<u8> {
-    form.bytes().find(|&b| crate::cll::phonology::is_c(b))
+    form.bytes().find(|&b| is_c(b))
 }
 
 /// Form-aware hyphen requirement (CLL §4.6).
@@ -135,14 +135,6 @@ fn hyphen_ok(seg: &LujvoSegmentation) -> Result<(), String> {
                 // Possibly required by §4.11.5 tosmabru (C15). Tentatively allow;
                 // C15 rejects if the y is not justified, and rejects if missing when needed.
             }
-            (None, Some('r')) | (None, Some('n'))
-                if previous_piece.shape == RafsiShape::Cvv
-                    && (previous_piece.hyphen_after == Some('n'))
-                        == next_piece.form.starts_with('r') =>
-            {
-                // camxes extension (not CLL): an `r`-hyphen (`n` before
-                // `r`) may follow any CVV rafsi (camxes `cvvr`).
-            }
             (None, Some(g)) => {
                 return Err(format!(
                     "C13 §4.6/§4.11: illegal `{g}`-hyphen after rafsi `{}` before `{}` (not required)",
@@ -185,9 +177,7 @@ pub fn check_lujvo(norm: &str) -> Result<Vec<String>, (ConstraintId, String)> {
     // Checked on the shape so it also holds when the lexicon has no parse.
     let lower = body.to_ascii_lowercase();
     let lb = lower.as_bytes();
-    if let Some(i) =
-        (1..lb.len()).find(|&i| lb[i] == b'y' && !crate::cll::phonology::is_c(lb[i - 1]))
-    {
+    if let Some(i) = (1..lb.len()).find(|&i| lb[i] == b'y' && !is_c(lb[i - 1])) {
         return Err((
             ConstraintId::C13,
             format!("C13 §4.6: `y` after a vowel at byte {i} is not a lujvo hyphen"),

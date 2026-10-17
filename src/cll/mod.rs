@@ -1,26 +1,19 @@
 //! Vendored copy of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
-//! (commit e07f176, same author; tergenzalvi is MIT OR Apache-2.0 and is
-//! included here under the crate's MIT license): CLL Chapters 3–4
-//! morphology (CFG/Earley shapes + constraint filters) and the Chapter 21
-//! cmavo lexicon / syntax layer. Used by the `earley` feature; vendored so
-//! that camxes-rs can be published without a git dependency. Only the
-//! `constructions` and `web` modules and the binaries are left out.
+//! (same author; tergenzalvi is MIT OR Apache-2.0 and is included here under
+//! the crate's MIT license): CLL Chapters 3–4 morphology (CFG/Earley shapes +
+//! constraint filters) and the Chapter 21 cmavo lexicon / syntax layer. Used
+//! by the `earley` feature; vendored so that camxes-rs can be published
+//! without a git dependency. Only the `constructions` and `web` modules and
+//! the binaries are left out.
 //!
-//! ## Local changes: camxes extensions (not CLL)
-//! `Engine::Earley` must give the camxes word types, so the copy carries
-//! changes marked "camxes extension (not CLL)" in the code:
-//! - [`mod@cfg`] grammar: camxes cmavo shapes (vowel chains, `y` chains, `i`/`u`
-//!   glides, consonant + vowel chains), vowel chains in brivla and names,
-//!   `i`/`u` glides in fu'ivla links.
-//! - [`constraints`]: slinku'i is the camxes test (`C` + rafsi string); lujvo
-//!   are segmented by rafsi form with the camxes `CVVr` hyphen; the
-//!   `la`/`lai`/`doi` ban in names (C19) is not applied; fu'ivla with a late
-//!   cluster and "a cmavo followed by words is not a brivla" follow camxes.
-//! - [`shapes`]: consonant-only fragments are names (camxes `zifcme`).
-//! - [`grammar`] lexer: a digit is a `PA` cmavo (camxes `digit`).
-//! - [`camxes`]: ports of camxes morphology rules (rafsi strings, syllables,
-//!   `y`-hyphen lujvo, comma pauses, the obsolete-form rule) and the
-//!   `MorphClass` → camxes word type mapping.
+//! ## No local changes
+//! Apart from crate paths (`crate::` → `crate::cll::`) and the location of
+//! the data files (`data/`), the files here are identical to tergenzalvi's
+//! `src/`; `scripts/check_cll_sync.sh` checks this. The camxes word-type
+//! mapping (`MorphClass` → camxes `WordType`, the obsolete-form rule) lives
+//! outside this module, in `morphology::camxes`. Where the PEG (camxes)
+//! and Earley (CLL) engines disagree, the README section "Differences
+//! between the PEG (camxes) and Earley (CLL) engines" lists the cases.
 //!
 //! Lojban morphology recognizer grounded in CLL Ch. 3–4.
 //! Ch. 21 syntax layer in [`grammar`].
@@ -47,9 +40,9 @@
 //! - **Syntax layer:** CLL Chapter 21 EBNF syntax over lexemes.
 //! - **Out:** camxes PEG, vlazba peg extras, BPFK folklore beyond CLL.
 
-pub mod camxes;
 pub mod cfg;
 pub mod constraints;
+pub mod forms;
 pub mod lex;
 pub mod phonology;
 pub mod shapes;

@@ -110,12 +110,14 @@ fn parse_as_internal(
         }
     };
 
-    // Refuse if any GAP/UNKNOWN terminals slipped through
+    // Refuse if any GAP/UNKNOWN terminals slipped through, or if the morph
+    // layer dropped words it could not analyse (a text with an unanalysable
+    // word has no derivation, even if the remaining words would parse).
     let has_bad = lexed
         .lexemes
         .iter()
         .any(|l| l.terminal == "GAP" || l.terminal == "UNKNOWN_CMAVO");
-    if has_bad {
+    if has_bad || !lexed.gaps.is_empty() {
         gaps.push("syntax skipped: lexeme layer emitted GAP/UNKNOWN_CMAVO".into());
         return (
             GrammarResult {

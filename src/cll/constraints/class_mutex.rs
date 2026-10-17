@@ -63,13 +63,7 @@ pub fn filter_classes(
 
     if !has_cc {
         let mut stripped = false;
-        // camxes extension: see `crate::cll::camxes::late_cluster_fuhivla`.
-        let keep_fuhivla =
-            out.contains(&MorphClass::Fuhivla) && crate::cll::camxes::late_cluster_fuhivla(norm);
         for brivla in [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla] {
-            if keep_fuhivla && brivla == MorphClass::Fuhivla {
-                continue;
-            }
             if out.remove(&brivla) {
                 stripped = true;
             }
@@ -79,17 +73,22 @@ pub fn filter_classes(
             notes.push("C02 §4.3: no CC in first five → not brivla".into());
         }
     } else {
-        // camxes extension: see `crate::cll::camxes::cmavo_prefix_splits`.
+        // CLL §4.7 (fu'ivla rule 3) and §4.6 (hyphens keep a lujvo from
+        // falling apart): a brivla must not break up into a leading cmavo
+        // and following cmavo/gismu/lujvo. See `crate::cll::forms`.
         if [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla]
             .iter()
             .any(|c| out.contains(c))
-            && crate::cll::camxes::cmavo_prefix_splits(norm)
+            && crate::cll::forms::cmavo_prefix_splits(norm)
         {
             for brivla in [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla] {
                 out.remove(&brivla);
             }
             rejected.push(ConstraintId::C02);
-            notes.push("camxes: starts with a cmavo followed by words → not brivla".into());
+            notes.push(
+                "§4.6/§4.7: breaks up into a cmavo and following cmavo/gismu/lujvo → not brivla"
+                    .into(),
+            );
         }
         let mut stripped = false;
         if out.remove(&MorphClass::Cmavo) {

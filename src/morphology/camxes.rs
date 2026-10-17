@@ -1,13 +1,11 @@
-//! camxes compatibility rules (local to camxes-rs, not part of
-//! tergenzalvi).
+//! camxes word-type mapping for the Earley engine (camxes-rs only; not part
+//! of the vendored tergenzalvi code in `crate::cll`).
 //!
-//! The CLL rules of this module tree say whether a word *can* be a cmavo,
-//! gismu, lujvo, fu'ivla or cmevla. camxes, the standard morphology used by
-//! the PEG engine, picks one class per word and accepts some forms the CLL
-//! does not describe (experimental cmavo, apostrophe chains, ...; those
-//! extensions are marked "camxes extension" in the code). This module holds
-//! the rules that turn a CLL result into the camxes word class, and the
-//! rules that recognize forms camxes rejects (obsolete forms).
+//! The CLL pipeline says which classes a word *can* have (cmavo, gismu,
+//! lujvo, fu'ivla, cmevla). This module picks the camxes word type for the
+//! `morphology` API ([`word_class`]) and decides the rule-based
+//! standard/obsolete flag ([`is_obsolete_form`]: a port of the camxes
+//! syllable rules). Neither changes what the CLL pipeline accepts.
 
 use crate::cll::constraints::ConstrainedResult;
 use crate::cll::lex::WordClass;
@@ -61,152 +59,6 @@ pub fn word_class(r: &ConstrainedResult, text: &str) -> Option<WordClass> {
 /// start like this are never fu'ivla in camxes.
 pub fn starts_with_rafsi_string(text: &str) -> bool {
     Word::new(text).rafsi_string(0).is_some()
-}
-
-/// camxes extension (not CLL): a lujvo joined with `y` hyphens whose pieces
-/// CLL cannot read as rafsi. camxes lets any brivla-like head end in a
-/// `y` hyphen (`eiks-y-spe`, `abniien-y-bau`; a vowel-final head takes
-/// `'y`: `baxmasi'-y-gu'e`) and lets the last piece be any brivla
-/// (`cimn-y'-efku`, `batk-y-uidje`).
-///
-/// The word is cut after every `y` (and a following apostrophe). Each head
-/// piece must contain a vowel and no `y`, and end in a consonant (before
-/// `y`) or an apostrophe (`'y`); `last` decides whether the final piece is
-/// a gismu, lujvo, fu'ivla or final rafsi.
-pub fn is_y_hyphen_lujvo(text: &str, last: impl Fn(&str) -> bool) -> bool {
-    let w: String = text
-        .chars()
-        .filter(|&c| c != '.')
-        .map(|c| c.to_ascii_lowercase())
-        .collect();
-    if !w.bytes().all(|b| b.is_ascii_lowercase() || b == b'\'') {
-        return false;
-    }
-    let bytes = w.as_bytes();
-    let mut start = 0;
-    let mut heads = 0;
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'y' {
-            let head = &bytes[start..i];
-            let ok = head.iter().any(|&b| crate::cll::phonology::is_v(b))
-                && head.last().is_some_and(|&b| is_c(b) || b == b'\'')
-                && !head.starts_with(b"'");
-            if !ok {
-                return false;
-            }
-            heads += 1;
-            i += 1;
-            if bytes.get(i) == Some(&b'\'') {
-                i += 1;
-            }
-            start = i;
-            continue;
-        }
-        i += 1;
-    }
-    heads > 0 && start < bytes.len() && last(&w[start..])
-}
-
-/// Short final rafsi shapes (CVV, CV'V, CCV with a permissible initial).
-pub fn is_final_short_rafsi(piece: &str) -> bool {
-    use crate::cll::phonology::{is_permissible_initial_pair, is_v};
-    match piece.as_bytes() {
-        [c, a, b] if is_c(*c) && is_v(*a) && is_v(*b) => {
-            crate::cll::phonology::DIPHTHONG_OFF.contains(&&piece[1..])
-        }
-        [c, a, b'\'', b] => is_c(*c) && is_v(*a) && is_v(*b),
-        [c1, c2, v] => is_c(*c1) && is_c(*c2) && is_v(*v) && is_permissible_initial_pair(*c1, *c2),
-        _ => false,
-    }
-}
-
-/// camxes extension (not CLL §4.3 "consonant cluster in the first five
-/// letters"): camxes only asks that a brivla not fall apart into a cmavo
-/// and another word. A fu'ivla-shaped word with a later cluster is kept when
-/// its longest leading cmavo form (`fau'a` in `fau'arma`, `ra'oi` in
-/// `ra'oijbo`) is followed by a consonant-initial rest that is not a word.
-pub fn late_cluster_fuhivla(text: &str) -> bool {
-    let w = Word::new(text);
-    let letters = &w.w;
-    if !letters.windows(2).any(|p| is_c(p[0]) && is_c(p[1])) {
-        return false;
-    }
-    match cmavo_prefix_rest(&w) {
-        Some(rest) => !is_word_sequence(&rest, 8),
-        None => false,
-    }
-}
-
-/// camxes `brivla_head = !cmavo ...`: a word that starts with a cmavo form
-/// followed by a consonant-initial sequence of words (`mi` + `brainmu` in
-/// `mibrainmu`) is not a brivla; camxes splits it.
-pub fn cmavo_prefix_splits(text: &str) -> bool {
-    let w = Word::new(text);
-    // camxes `cmavo = !CVCy_lujvo ...`: `babylujvo` is a lujvo, not
-    // `ba` + `by` + `lujvo`.
-    let cvcy = matches!(w.w.as_slice(), [c1, v, c2, b'y', ..] if is_c(*c1) && crate::cll::phonology::is_v(*v) && is_c(*c2));
-    !cvcy && cmavo_prefix_rest(&w).is_some_and(|rest| is_word_sequence(&rest, 8))
-}
-
-/// The whole text is a camxes `rafsi_string` (rafsi ending in a final
-/// rafsi), e.g. the `xe'idaiseldi'e` tail of a y-hyphen lujvo.
-pub fn is_rafsi_string(text: &str) -> bool {
-    let w = Word::new(text);
-    w.rafsi_string(0) == Some(w.w.len())
-}
-
-/// The rest of the word after its longest leading camxes cmavo form
-/// `C?(N')*N`, when that rest starts with a consonant.
-fn cmavo_prefix_rest(w: &Word) -> Option<String> {
-    let mut p = w.zunsna(0).unwrap_or(0);
-    loop {
-        let e = w.nucleus(p)?;
-        match w.h(e) {
-            Some(after) => p = after,
-            None => {
-                p = e;
-                break;
-            }
-        }
-    }
-    (p > 0 && p < w.w.len() && is_c(w.w[p]))
-        .then(|| String::from_utf8_lossy(&w.w[p..]).into_owned())
-}
-
-/// camxes `lojban_word` after a cmavo: a word, or (recursively) a cmavo
-/// followed by such a sequence (`lerenanmu` = `le` + `re` + `nanmu`).
-/// Only camxes-valid (standard, see [`is_obsolete_form`]) words count, as in
-/// camxes itself (`matriocka` is not split into `ma` + obsolete `triocka`).
-fn is_word_sequence(text: &str, depth: usize) -> bool {
-    let r = crate::cll::constraints::morph_parse(text);
-    if r.accepted && !is_obsolete_form(text, r.classes.contains(&MorphClass::Cmevla)) {
-        return true;
-    }
-    depth > 0
-        && cmavo_prefix_rest(&Word::new(text))
-            .is_some_and(|rest| is_word_sequence(&rest, depth - 1))
-}
-
-/// camxes reads a comma as a pause (a word break) unless a nucleus
-/// follows it, in which case it is a syllable break like `'` (`da,ic` is one
-/// name, `nu,IORK` is `nu` + `IORK`). Returns the byte offsets of the commas
-/// in `text` that are pauses.
-pub fn pause_commas(text: &str) -> Vec<usize> {
-    let lower = text.to_ascii_lowercase();
-    let mut out = Vec::new();
-    for (i, b) in lower.bytes().enumerate() {
-        if b != b',' {
-            continue;
-        }
-        let rest = Word {
-            w: lower.as_bytes()[i + 1..].to_vec(),
-        };
-        if rest.nucleus(0).is_none() {
-            out.push(i);
-        }
-    }
-    out
 }
 
 /// True when `word` (one word of the given class) uses a form that CLL
@@ -599,12 +451,11 @@ mod tests {
     }
 
     #[test]
-    fn y_hyphen_lujvo_pieces() {
-        let last = |p: &str| is_final_short_rafsi(p) || p == "efku";
-        assert!(is_y_hyphen_lujvo("eiksyspe", last));
-        assert!(is_y_hyphen_lujvo("baxmasi'ygu'e", last));
-        assert!(is_y_hyphen_lujvo("cimny'efku", last));
-        assert!(!is_y_hyphen_lujvo("posytmo", last));
-        assert!(!is_y_hyphen_lujvo("klama", last));
+    fn obsolete_forms() {
+        assert!(is_obsolete_form("kuarka", false));
+        assert!(is_obsolete_form("cie'a'u", false));
+        assert!(!is_obsolete_form("klama", false));
+        assert!(is_obsolete_form("tiuanjous", true));
+        assert!(!is_obsolete_form("djan", true));
     }
 }

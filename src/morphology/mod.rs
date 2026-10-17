@@ -11,8 +11,8 @@
 //! * `Engine::Earley` (Cargo feature `earley`) runs the CLL Chapter 3–4
 //!   morphology of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
 //!   (vendored as `camxes_rs::cll`): CFG/Earley word shapes, constraint
-//!   filters and stream segmentation, with camxes compatibility rules
-//!   (`camxes_rs::cll::camxes`) that choose the camxes word type. Besides the
+//!   filters and stream segmentation; a mapping layer (`morphology::camxes`,
+//!   private) chooses the camxes word type. Besides the
 //!   words the PEG grammar accepts it also accepts the older CLL dialect
 //!   that the PEG rejects (for example obsolete fu'ivla such as `kuarka`).
 //!   Each word is flagged [`WordDialect::Standard`] or
@@ -32,6 +32,8 @@ mod peg;
 #[cfg(feature = "peg")]
 mod tree;
 
+#[cfg(feature = "earley")]
+mod camxes;
 #[cfg(feature = "earley")]
 mod earley;
 
@@ -116,7 +118,7 @@ impl MorphWord {
 ///   engine produces is standard.
 /// * `Obsolete` — the camxes rules reject the word, but the CLL Chapter 3–4
 ///   rules of tergenzalvi accept it with this class. Decided by the camxes
-///   word-form rules in `camxes_rs::cll::camxes::is_obsolete_form`: a word
+///   word-form rules (`is_obsolete_form` in `src/morphology/camxes.rs`): a word
 ///   other than a name must split into camxes syllables (no on-glide right
 ///   after a consonant that cannot close a syllable, as in `kuarka`,
 ///   `fiesta`, `cia'o'e`, `gondii'i`; no consonant cluster that is not a

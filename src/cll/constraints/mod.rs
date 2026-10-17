@@ -182,8 +182,16 @@ pub fn constrain_with(
         };
     }
 
-    // C19 (CLL §4.8 `la`/`lai`/`doi` ban in cmevla) is not applied: camxes
-    // has no such ban (`lat`, `laus`). See `cmevla_ban` for the CLL rule.
+    // C19 cmevla ban
+    if classes.contains(&MorphClass::Cmevla) {
+        if let Some(hit) = cmevla_ban::banned_substring(norm) {
+            classes.remove(&MorphClass::Cmevla);
+            push_id(&mut rejected_by, ConstraintId::C19);
+            notes.push(format!(
+                "C19 §4.8: cmevla contains banned `{hit}` not after consonant"
+            ));
+        }
+    }
 
     // C01/C02/C03/C05/C12/C16 class mutex
     let (classes2, rb2, mut n2) = class_mutex::filter_classes(norm, &classes);
@@ -387,11 +395,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cmevla_la_ban_not_applied() {
-        // camxes extension: no `la` ban, so `laplas.` is a cmevla.
-        assert!(cmevla_ban::banned_substring("laplas").is_some());
+    fn cmevla_la_ban_rejects() {
         let r = morph_parse("laplas.");
-        assert!(r.classes.contains(&MorphClass::Cmevla), "{r:?}");
+        assert!(!r.accepted, "{r:?}");
+        assert!(r.rejected_by.contains(&ConstraintId::C19));
+        let r2 = morph_parse("ilanas.");
+        assert!(!r2.accepted, "{r2:?}");
     }
 
     #[test]

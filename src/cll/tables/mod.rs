@@ -80,9 +80,10 @@ pub fn classify_rafsi_shape(rafsi: &str) -> Option<RafsiShape> {
     }
 }
 
-/// Consonant pairs of a rafsi-shaped string: an initial pair must be a
-/// permissible initial (CCV, CCVC, CCVCV), a medial one a permissible medial
-/// pair (CVCC, CVCCV).
+/// CLL §4.5 restrictions on a rafsi-shaped string: an initial pair must be
+/// a permissible initial (CCV, CCVC, CCVCV), a medial one a permissible
+/// medial pair (CVCC, CVCCV), and a CVV form without apostrophe needs an
+/// off-glide diphthong.
 fn rafsi_phonotactics_ok(r: &[u8], shape: RafsiShape) -> bool {
     use crate::cll::phonology::{is_permissible_initial_pair, is_permissible_medial_pair};
     match shape {
@@ -94,7 +95,12 @@ fn rafsi_phonotactics_ok(r: &[u8], shape: RafsiShape) -> bool {
                 is_permissible_medial_pair(r[2], r[3])
             }
         }
-        RafsiShape::Cvc | RafsiShape::Cvv => true,
+        // §4.5: "a CVV-form rafsi without an apostrophe cannot exist unless
+        // the vowels make up one of the four diphthongs ai, ei, oi, or au".
+        RafsiShape::Cvv => {
+            r.get(2) == Some(&b'\'') || matches!(&r[1..], b"ai" | b"ei" | b"oi" | b"au")
+        }
+        RafsiShape::Cvc => true,
     }
 }
 
@@ -196,9 +202,11 @@ impl RafsiLexicon {
         out
     }
 
-    /// camxes extension (not CLL): segmentations into rafsi-**shaped**
-    /// pieces (CVC, CCV, CVV, CV'V, 4-letter, final 5-letter), whether or not
-    /// the lexicon lists them. camxes decides lujvo by form alone.
+    /// Segmentations into rafsi-**shaped** pieces (CVC, CCV, CVV, CV'V,
+    /// 4-letter, final 5-letter), whether or not the lexicon lists them,
+    /// with the §4.5 form restrictions (`rafsi_phonotactics_ok`). CLL §4.7
+    /// rule 3 and §4.6 ask whether a word "has the form of a lujvo"; §4.5
+    /// defines the rafsi forms, not a closed list.
     pub fn segment_lujvo_by_form(&self, body: &str) -> Vec<LujvoSegmentation> {
         let body = body.as_bytes();
         let mut out = Vec::new();
@@ -250,6 +258,11 @@ impl RafsiLexicon {
             }
             let at_end = i + len == body.len();
             if at_end && matches!(shape, RafsiShape::Cvc | RafsiShape::Long4) {
+                continue;
+            }
+            // §4.5: the 5-letter rafsi (the gismu itself) is "used only at
+            // the end of a lujvo".
+            if !at_end && shape == RafsiShape::Final5 {
                 continue;
             }
             let source = self

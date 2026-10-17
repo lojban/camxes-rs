@@ -5,14 +5,17 @@
 //! > form of a lujvo (the so-called "slinku'i test", not discussed further
 //! > in this book)
 //!
-//! camxes-rs uses the camxes reading (local change, not in tergenzalvi):
-//! reject a candidate fu'ivla `F` when `F` minus its first consonant starts
-//! with a camxes rafsi string ([`crate::cll::camxes::starts_with_rafsi_string`]),
-//! i.e. when `CV ++ F` would start with CVC rafsi + rafsi string. The named
-//! form `slinku'i` fails (`pa` + `slinku'i` → `pas+lin+ku'i`).
+//! Literal reading: reject a candidate fu'ivla `F` when `CV ++ F` passes the
+//! lujvo checks ([`lujvo_hyphen::has_valid_rafsi_parse`]: a hyphen-legal
+//! segmentation into rafsi-shaped pieces). Only a consonant-initial `F`
+//! can run into a preceding CV cmavo (a vowel-initial word follows a pause,
+//! §4.9), and the first rafsi is then `CVC…`, so which CV cmavo is used does
+//! not matter. The named form `slinku'i` fails (`pa` + `slinku'i` →
+//! `pas+lin+ku'i`).
 
 use super::{Constraint, ConstraintMeta, ConstraintStatus, Reject};
 use crate::cll::cfg::CandidateSpan;
+use crate::cll::constraints::lujvo_hyphen;
 use crate::cll::phonology::is_c;
 use crate::cll::shapes::MorphClass;
 use std::collections::BTreeSet;
@@ -83,15 +86,13 @@ pub fn failing_cv_prefix(fuhivla: &str) -> Option<String> {
 }
 
 fn failing_cv_prefix_uncached(body: &str) -> Option<String> {
-    // camxes reading of the test (camxes `!(zunsna rafsi_string)`): a CV
-    // cmavo `Ca` runs into F as a lujvo exactly when F without its first
-    // consonant starts with a rafsi string (`pa` + `slinku'i` → `pas-lin-ku'i`).
-    // A vowel-initial F starts after a pause, so nothing runs into it.
     let first = body.bytes().next()?;
     if !is_c(first) {
         return None;
     }
-    crate::cll::camxes::starts_with_rafsi_string(&body[1..]).then(|| format!("{}a", first as char))
+    // The consonant and vowel of the CV cmavo are in no consonant pair, so
+    // one representative (`pa`) decides for all of them.
+    lujvo_hyphen::has_valid_rafsi_parse(&format!("pa{body}")).then(|| "pa".to_string())
 }
 
 #[cfg(test)]

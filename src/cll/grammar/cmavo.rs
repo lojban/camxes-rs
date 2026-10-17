@@ -86,8 +86,8 @@ impl CmavoLexicon {
                 }
             }
             let piece = matched_piece?;
-            // A vowel-initial cmavo needs a pause before it (CLL 4.2, camxes
-            // `cmavo` boundaries): never split inside a vowel chain or
+            // A vowel-initial cmavo needs a pause before it (CLL §4.9 rule
+            // 3): never split inside a vowel chain or
             // diphthong (`co'oi` is not `co'o` + `i`).
             if !pieces.is_empty()
                 && !piece

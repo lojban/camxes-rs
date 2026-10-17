@@ -5,12 +5,18 @@
 //!   rafsi (treated like a 4-letter rafsi, so a following y-hyphen is used).
 //! - Example: `tci'ile` → stem `tci'il` → `tci'ilykemcantutra`.
 
+use crate::cll::phonology::clusters::is_permissible_initial_pair;
 use crate::cll::phonology::{is_c, is_v};
 use crate::cll::tables::{RafsiLexicon, RafsiShape};
 
 /// CCVVCV cultural form (§4.16): CC + (VV|V'V) + C + V.
 pub fn is_ccvvcv_fuhivla(body: &str) -> bool {
     let bytes = body.as_bytes();
+    // "valid Type 4 fu'ivla" (§4.16): §4.7 rule 1 — a cluster at the start
+    // must be a permissible initial pair (`xmaira` is not a fu'ivla).
+    if bytes.len() < 2 || !is_permissible_initial_pair(bytes[0], bytes[1]) {
+        return false;
+    }
     // CC + V'V + C + V
     if bytes.len() == 7
         && is_c(bytes[0])
@@ -107,6 +113,8 @@ mod tests {
     fn tciile_shape() {
         assert!(is_ccvvcv_fuhivla("tci'ile"));
         assert_eq!(cultural_stem("tci'ile").as_deref(), Some("tci'il"));
+        assert!(!is_ccvvcv_fuhivla("xmaira"));
+        assert!(try_parse_experimental_lujvo("xmairybau").is_none());
     }
 
     #[test]
