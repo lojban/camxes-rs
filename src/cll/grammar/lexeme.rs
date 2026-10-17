@@ -98,6 +98,23 @@ fn lex_lojban_region(
     // boundary was explicit (space/`.` — do not re-fuse across those).
     let mut groups: Vec<(Vec<Lexeme>, bool)> = Vec::new();
     for tok in &seg.tokens {
+        // camxes extension (not CLL): each digit is a PA cmavo (camxes
+        // `digit`), so `li 1995` is a number.
+        if !tok.text.is_empty() && tok.text.bytes().all(|b| b.is_ascii_digit()) {
+            let piece = tok
+                .text
+                .chars()
+                .map(|d| {
+                    plain_lexeme(
+                        &d.to_string(),
+                        "PA",
+                        Some("camxes extension: digit = PA".into()),
+                    )
+                })
+                .collect();
+            groups.push((piece, tok.explicit_boundary));
+            continue;
+        }
         if !tok.result.accepted {
             gaps.push(format!(
                 "morph rejected {:?}: rejected_by={:?}",

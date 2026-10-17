@@ -249,6 +249,29 @@ pub fn build_morph_grammar() -> Grammar {
         ],
     );
     grammar_builder.prod(nucleus_brivla, vec![Symbol::Nt(vowel_run_nt)]);
+    // camxes extension (not CLL): apostrophe chains `N'N'N…` of vowels and
+    // off-glide diphthongs inside brivla (`banbu'a'a`, `krai'a`).
+    let cx_brivla_nucleus = grammar_builder.nt("CamxesBrivlaNucleus");
+    grammar_builder.prod(cx_brivla_nucleus, vec![Symbol::Nt(vowel_nt)]);
+    grammar_builder.prod(cx_brivla_nucleus, vec![Symbol::Nt(off_glide_diphthong_nt)]);
+    let cx_brivla_chain = grammar_builder.nt("CamxesBrivlaChain");
+    grammar_builder.prod(
+        cx_brivla_chain,
+        vec![
+            Symbol::Nt(cx_brivla_nucleus),
+            Symbol::Nt(apostrophe_nt),
+            Symbol::Nt(cx_brivla_nucleus),
+        ],
+    );
+    grammar_builder.prod(
+        cx_brivla_chain,
+        vec![
+            Symbol::Nt(cx_brivla_nucleus),
+            Symbol::Nt(apostrophe_nt),
+            Symbol::Nt(cx_brivla_chain),
+        ],
+    );
+    grammar_builder.prod(nucleus_brivla, vec![Symbol::Nt(cx_brivla_chain)]);
 
     let nucleus_cmevla = grammar_builder.nt("NucleusCmevla");
     grammar_builder.prod(nucleus_cmevla, vec![Symbol::Nt(vowel_nt)]);
@@ -406,6 +429,37 @@ pub fn build_morph_grammar() -> Grammar {
 
     grammar_builder.prod(cmavo_simple, vec![Symbol::Nt(exp_cmavo)]);
 
+    // camxes extension (not CLL): any cmavo `onset? N ('N)*` where a nucleus
+    // N is a vowel, an off-glide diphthong or `y`, and the onset is one
+    // consonant or an on-glide `i`/`u` (e.g. `ba'au`, `iau`, `ty'i`, `a'y`).
+    let cx_nucleus = grammar_builder.nt("CamxesNucleus");
+    grammar_builder.prod(cx_nucleus, vec![Symbol::Nt(vowel_nt)]);
+    grammar_builder.prod(cx_nucleus, vec![Symbol::Nt(off_glide_diphthong_nt)]);
+    grammar_builder.prod(cx_nucleus, vec![Symbol::Nt(y_letter_nt)]);
+    let cx_nuclei = grammar_builder.nt("CamxesNuclei");
+    grammar_builder.prod(cx_nuclei, vec![Symbol::Nt(cx_nucleus)]);
+    grammar_builder.prod(
+        cx_nuclei,
+        vec![
+            Symbol::Nt(cx_nucleus),
+            Symbol::Nt(apostrophe_nt),
+            Symbol::Nt(cx_nuclei),
+        ],
+    );
+    let cx_glide = grammar_builder.nt("CamxesGlide");
+    grammar_builder.lit(cx_glide, b"i");
+    grammar_builder.lit(cx_glide, b"u");
+    let cx_cmavo_c = grammar_builder.nt("CamxesCmavoC");
+    grammar_builder.prod(
+        cx_cmavo_c,
+        vec![Symbol::Nt(consonant_nt), Symbol::Nt(cx_nuclei)],
+    );
+    let cx_cmavo = grammar_builder.nt("CamxesCmavo");
+    grammar_builder.prod(cx_cmavo, vec![Symbol::Nt(cx_nuclei)]);
+    grammar_builder.prod(cx_cmavo, vec![Symbol::Nt(cx_glide), Symbol::Nt(cx_nuclei)]);
+    grammar_builder.prod(cx_cmavo, vec![Symbol::Nt(cx_cmavo_c)]);
+    grammar_builder.prod(cmavo_simple, vec![Symbol::Nt(cx_cmavo)]);
+
     // Compound cmavo: sequence of simple pieces; pauses between vowel-initial pieces
     let cmavo_core_c = grammar_builder.nt("CmavoCoreC");
     let cmavo_core = grammar_builder.nt("CmavoCore");
@@ -438,6 +492,8 @@ pub fn build_morph_grammar() -> Grammar {
     grammar_builder.prod(cmavo_core, vec![Symbol::Nt(cmavo_core_c)]);
     grammar_builder.prod(cmavo_core, vec![Symbol::Nt(exp_cmavo)]);
     grammar_builder.prod(cmavo_core_c, vec![Symbol::Nt(exp_cmavo_c)]);
+    grammar_builder.prod(cmavo_core, vec![Symbol::Nt(cx_cmavo)]);
+    grammar_builder.prod(cmavo_core_c, vec![Symbol::Nt(cx_cmavo_c)]);
 
     // A following V-initial cmavo needs an explicit pause (§4.2). The first
     // piece can be V-initial without a written dot; its boundary is external.
@@ -579,6 +635,12 @@ pub fn build_morph_grammar() -> Grammar {
     grammar_builder.prod(f_link, vec![Symbol::Nt(medial_consonant_pair_nt)]);
     grammar_builder.prod(f_link, vec![Symbol::Nt(consonant_triple_nt)]);
     grammar_builder.prod(f_link, vec![Symbol::Nt(comma)]);
+    // camxes extension (not CLL): an on-glide `i`/`u` starts a syllable
+    // after a vowel (`bla|ia`, `jbo|iu`).
+    let f_glide = grammar_builder.nt("FGlide");
+    grammar_builder.lit(f_glide, b"i");
+    grammar_builder.lit(f_glide, b"u");
+    grammar_builder.prod(f_link, vec![Symbol::Nt(f_glide)]);
     let f_cplus = grammar_builder.nt("FCPlus");
     grammar_builder.prod(f_cplus, vec![Symbol::Nt(consonant_nt)]);
     grammar_builder.prod(f_cplus, vec![Symbol::Nt(consonant_nt), Symbol::Nt(f_cplus)]);
@@ -692,6 +754,12 @@ pub fn build_morph_grammar() -> Grammar {
     );
 
     grammar_builder.prod(fuhivla, vec![Symbol::Nt(fuhivla_s3)]);
+    // camxes extension (not CLL): a fu'ivla whose only vowels form one
+    // apostrophe chain (`krai'a`, `ska'ai`).
+    grammar_builder.prod(
+        fuhivla,
+        vec![Symbol::Nt(f_onset), Symbol::Nt(cx_brivla_chain)],
+    );
 
     // --- cmevla §4.8 ---
     // Consonant-final; pairs medial-OK (enforced by phonotactics filter);
@@ -710,6 +778,9 @@ pub fn build_morph_grammar() -> Grammar {
         vec![Symbol::Nt(vpart), Symbol::Nt(vext), Symbol::Nt(vexts)],
     );
     grammar_builder.prod(c_nucleus, vec![Symbol::Nt(vpart), Symbol::Nt(vext)]);
+    // camxes extension (not CLL): apostrophe chains with `y` in names
+    // (`sa'ydar`, `cy'i'am`).
+    grammar_builder.prod(c_nucleus, vec![Symbol::Nt(cx_nuclei)]);
     // comma-separated nucleus (disambiguation) §3.3
     grammar_builder.prod(
         c_nucleus,

@@ -1,7 +1,8 @@
 //! Whole-text syntax: both engines must accept basic Lojban constructions
 //! (including `zoi`/`la'o` quotes with matching delimiters) and reject
-//! clearly ungrammatical texts. Tree shapes are not compared, except for the
-//! `zoi` delimiter nodes.
+//! clearly ungrammatical texts. Tree shapes differ between the engines (the
+//! PEG engine uses camxes rule names, the Earley engine the CLL Ch.21 EBNF
+//! rule names) and are not compared, except for the `zoi` quote nodes.
 
 use camxes_rs::morphology::Engine;
 use camxes_rs::syntax::accepts;
@@ -142,7 +143,9 @@ fn basic_grammar_both_engines() {
 }
 
 /// Both engines' trees of a `zoi` quote show the delimiters and the quoted
-/// words, and the quote ends at the first matching delimiter.
+/// text, and the quote ends at the first matching delimiter. PEG: camxes
+/// `zoi_open` / `zoi_word` / `zoi_close` nodes; Earley (CLL Ch.21): the
+/// delimiter words (selma'o `BY` here) around one `FOREIGN` terminal.
 #[test]
 fn zoi_tree_uses_matching_delimiters() {
     use camxes_rs::peg::parsing::ParseNode;
@@ -173,9 +176,17 @@ fn zoi_tree_uses_matching_delimiters() {
                 .map(|(s, e)| text[s..e].trim_matches(|c: char| c == '.' || c == ' '))
                 .collect::<Vec<_>>()
         };
-        let engine = engine.name();
-        assert_eq!(collect("zoi_open"), ["gy"], "{engine}");
-        assert_eq!(collect("zoi_word"), ["hello", "dy", "world"], "{engine}");
-        assert_eq!(collect("zoi_close"), ["gy"], "{engine}");
+        match engine.name() {
+            "peg" => {
+                assert_eq!(collect("zoi_open"), ["gy"]);
+                assert_eq!(collect("zoi_word"), ["hello", "dy", "world"]);
+                assert_eq!(collect("zoi_close"), ["gy"]);
+            }
+            _ => {
+                assert_eq!(collect("ZOI"), ["zoi"]);
+                assert_eq!(collect("BY"), ["gy", "gy"]);
+                assert_eq!(collect("FOREIGN"), ["hello .dy world"]);
+            }
+        }
     }
 }

@@ -66,7 +66,7 @@ pub enum ErrorKind {
     NotDidMatch(Vec<ParseNode>),
     NonTerminalDoesNotMatch,
     NonTerminalDoesNotExist(String),
-    /// The parse ran out of stack (see [`crate::peg::stack`]):
+    /// The parse ran out of stack (see `crate::peg::stack`):
     /// very deep nesting, or a left-recursive rule.
     RecursionLimit,
 }

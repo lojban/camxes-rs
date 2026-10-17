@@ -6,6 +6,22 @@
 //! that camxes-rs can be published without a git dependency. Only the
 //! `constructions` and `web` modules and the binaries are left out.
 //!
+//! ## Local changes: camxes extensions (not CLL)
+//! `Engine::Earley` must give the camxes word types, so the copy carries
+//! changes marked "camxes extension (not CLL)" in the code:
+//! - [`mod@cfg`] grammar: camxes cmavo shapes (vowel chains, `y` chains, `i`/`u`
+//!   glides, consonant + vowel chains), vowel chains in brivla and names,
+//!   `i`/`u` glides in fu'ivla links.
+//! - [`constraints`]: slinku'i is the camxes test (`C` + rafsi string); lujvo
+//!   are segmented by rafsi form with the camxes `CVVr` hyphen; the
+//!   `la`/`lai`/`doi` ban in names (C19) is not applied; fu'ivla with a late
+//!   cluster and "a cmavo followed by words is not a brivla" follow camxes.
+//! - [`shapes`]: consonant-only fragments are names (camxes `zifcme`).
+//! - [`grammar`] lexer: a digit is a `PA` cmavo (camxes `digit`).
+//! - [`camxes`]: ports of camxes morphology rules (rafsi strings, syllables,
+//!   `y`-hyphen lujvo, comma pauses, the obsolete-form rule) and the
+//!   `MorphClass` → camxes word type mapping.
+//!
 //! Lojban morphology recognizer grounded in CLL Ch. 3–4.
 //! Ch. 21 syntax layer in [`grammar`].
 //!
@@ -31,6 +47,7 @@
 //! - **Syntax layer:** CLL Chapter 21 EBNF syntax over lexemes.
 //! - **Out:** camxes PEG, vlazba peg extras, BPFK folklore beyond CLL.
 
+pub mod camxes;
 pub mod cfg;
 pub mod constraints;
 pub mod lex;

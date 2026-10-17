@@ -1,38 +1,21 @@
-//! Earley engine adapter.
+//! Earley engine adapter: tergenzalvi's CLL Chapter 3–4 morphology (vendored
+//! as [`crate::cll`]): CFG/Earley shapes, constraint filters and stream
+//! segmentation.
 //!
-//! 1. **camxes dialect:** the same [`LOJBAN_MORPHOLOGY_GRAMMAR`] the PEG engine
-//!    uses, run on the Earley engine ([`crate::earley`]). When its
-//!    PEG-preferred derivation covers the input, the word split and classes
-//!    are read off the tree exactly like the PEG adapter does.
-//! 2. **CLL dialect:** otherwise tergenzalvi's CLL Chapter 3–4 morphology
-//!    (CFG/Earley shapes + constraint filters) classifies each piece; pieces
-//!    are split at whitespace and written pauses, and continuous text is
-//!    segmented by tergenzalvi's stream segmenter. This accepts the older
-//!    dialect that camxes rejects.
-//!    Each word of such a result gets a rule-based [`WordDialect`]: obsolete
-//!    unless the camxes grammar reads that word alone with the same class.
-//! 3. **camxes, complete derivation:** last resort, any camxes-grammar
-//!    derivation spanning the whole input.
+//! 1. The text is split at whitespace, written pauses (`.`) and commas that
+//!    camxes reads as pauses ([`camxes::pause_commas`]).
+//! 2. Each piece is first read as one word ([`morph_parse_stream_piece`]),
+//!    then as a `y`-hyphen lujvo ([`camxes::is_y_hyphen_lujvo`]), and
+//!    otherwise segmented by the stream segmenter ([`segment_continuous`]).
+//! 3. Each word gets the camxes word class ([`camxes::word_class`]) and a
+//!    rule-based [`WordDialect`] ([`camxes::is_obsolete_form`]).
 
-use super::tree::words_from_tree;
 use super::{
     split_cmavo_cluster, Dialect, MorphWord, Morphology, MorphologyError, WordClass, WordDialect,
 };
+use crate::cll::camxes;
 use crate::cll::constraints::ConstrainedResult;
-use crate::cll::lex::{morph_parse_stream_piece, segment_continuous};
-use crate::cll::shapes::MorphClass;
-use crate::earley::EarleyGrammar;
-use crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
-use std::sync::OnceLock;
-
-/// The camxes morphology grammar compiled for the Earley engine.
-pub fn camxes_morphology_grammar() -> &'static EarleyGrammar {
-    static G: OnceLock<EarleyGrammar> = OnceLock::new();
-    G.get_or_init(|| {
-        EarleyGrammar::new(LOJBAN_MORPHOLOGY_GRAMMAR.0, LOJBAN_MORPHOLOGY_GRAMMAR.1)
-            .expect("embedded morphology grammar compiles")
-    })
-}
+use crate::cll::lex::{morph_parse_stream_piece, segment_continuous, WordClass as CllClass};
 
 fn err(position: usize, message: impl Into<String>) -> MorphologyError {
     MorphologyError {
@@ -42,71 +25,20 @@ fn err(position: usize, message: impl Into<String>) -> MorphologyError {
     }
 }
 
+/// tergenzalvi `MorphClass` → camxes word type (via [`camxes::word_class`]).
+fn class_of(r: &ConstrainedResult, text: &str) -> Option<WordClass> {
+    Some(match camxes::word_class(r, text)? {
+        CllClass::Cmavo => WordClass::Cmavo,
+        CllClass::Gismu => WordClass::Gismu,
+        CllClass::Lujvo => WordClass::Lujvo,
+        CllClass::Fuhivla => WordClass::Fuhivla,
+        CllClass::Cmevla => WordClass::Cmevla,
+    })
+}
+
 pub(super) fn analyze(input: &str) -> Result<Morphology, MorphologyError> {
-    let g = camxes_morphology_grammar();
-    let mut text = input.to_ascii_lowercase();
-    text.push(' ');
-    let preferred = g.parse(&text);
-    if let Ok(nodes) = preferred.2.as_ref() {
-        if preferred.1 == text.len() {
-            if let Ok(words) = words_from_tree(nodes, input) {
-                if !words.is_empty() {
-                    return Ok(Morphology {
-                        words,
-                        dialect: Dialect::Camxes,
-                    });
-                }
-            }
-        }
-    }
-    let cll = analyze_cll(input);
-    if cll.is_ok() {
-        return cll;
-    }
-    let complete = g.parse_complete(&text);
-    if let Ok(nodes) = complete.2.as_ref() {
-        if let Ok(words) = words_from_tree(nodes, input) {
-            if !words.is_empty() {
-                return Ok(Morphology {
-                    words,
-                    dialect: Dialect::CamxesComplete,
-                });
-            }
-        }
-    }
-    cll
-}
-
-/// Choose one word class for an accepted result, in camxes' order of
-/// preference (cmevla, cmavo, gismu, fu'ivla, lujvo: camxes' lujvo rule
-/// requires `!fuhivla`).
-fn class_of(r: &ConstrainedResult) -> Option<WordClass> {
-    if !r.accepted {
-        return None;
-    }
-    r.classes
-        .iter()
-        .filter_map(|c| match c {
-            MorphClass::Cmevla => Some(WordClass::Cmevla),
-            MorphClass::Cmavo | MorphClass::CmavoCompound => Some(WordClass::Cmavo),
-            MorphClass::Gismu => Some(WordClass::Gismu),
-            MorphClass::Lujvo => Some(WordClass::Lujvo),
-            MorphClass::Fuhivla => Some(WordClass::Fuhivla),
-            _ => None,
-        })
-        .min_by_key(|c| match c {
-            WordClass::Cmevla => 0,
-            WordClass::Cmavo => 1,
-            WordClass::Gismu => 2,
-            WordClass::Fuhivla => 3,
-            WordClass::Lujvo => 4,
-        })
-}
-
-/// CLL-dialect analysis with tergenzalvi.
-pub(super) fn analyze_cll(input: &str) -> Result<Morphology, MorphologyError> {
-    // The CLL (`crate::cll`) orthography normalizer drops unknown characters; reject
-    // them here so that e.g. `xa!` is not silently read as `xa`.
+    // The CLL orthography normalizer drops unknown characters; reject them
+    // here so that e.g. `xa!` is not silently read as `xa`.
     if let Some((pos, ch)) = input.char_indices().find(|&(_, c)| {
         !(c.is_ascii_alphabetic() || c.is_ascii_whitespace() || matches!(c, '\'' | ',' | '.'))
     }) {
@@ -129,13 +61,15 @@ pub(super) fn analyze_cll(input: &str) -> Result<Morphology, MorphologyError> {
         }
         let lead_pause = start > 0 && bytes[start - 1] == b'.';
         let trail_pause = i < bytes.len() && bytes[i] == b'.';
-        cll_piece(input, start, i, lead_pause, trail_pause, &mut words)?;
+        comma_pieces(input, start, i, lead_pause, trail_pause, &mut words)?;
     }
     if words.is_empty() {
         return Err(err(0, "no words"));
     }
     for w in &mut words {
-        w.word_dialect = word_dialect(&w.text, w.class);
+        if camxes::is_obsolete_form(&w.text, w.class == WordClass::Cmevla) {
+            w.word_dialect = WordDialect::Obsolete;
+        }
     }
     Ok(Morphology {
         words,
@@ -143,7 +77,10 @@ pub(super) fn analyze_cll(input: &str) -> Result<Morphology, MorphologyError> {
     })
 }
 
-fn cll_piece(
+/// Split a piece at the commas camxes reads as pauses when every part has a
+/// morphology; otherwise keep the piece whole (the commas are then syllable
+/// breaks).
+fn comma_pieces(
     input: &str,
     start: usize,
     end: usize,
@@ -151,8 +88,48 @@ fn cll_piece(
     trail_pause: bool,
     out: &mut Vec<MorphWord>,
 ) -> Result<(), MorphologyError> {
-    // Spans come from the parser and sit on character boundaries.
-    let body = input.get(start..end).unwrap_or_default();
+    let body = &input[start..end];
+    let cuts = camxes::pause_commas(body);
+    if !cuts.is_empty() {
+        let mut bounds = Vec::with_capacity(cuts.len() + 1);
+        let mut s = 0;
+        for c in cuts {
+            bounds.push((s, c));
+            s = c + 1;
+        }
+        bounds.push((s, body.len()));
+        let last = bounds.len() - 1;
+        let mut local = Vec::new();
+        let ok = bounds.iter().enumerate().all(|(k, &(s, e))| {
+            s < e
+                && piece(
+                    input,
+                    start + s,
+                    start + e,
+                    lead_pause && k == 0,
+                    trail_pause && k == last,
+                    &mut local,
+                )
+                .is_ok()
+        });
+        if ok {
+            out.extend(local);
+            return Ok(());
+        }
+    }
+    piece(input, start, end, lead_pause, trail_pause, out)
+}
+
+fn piece(
+    input: &str,
+    start: usize,
+    end: usize,
+    lead_pause: bool,
+    trail_pause: bool,
+    out: &mut Vec<MorphWord>,
+) -> Result<(), MorphologyError> {
+    // Byte offsets here sit on ASCII characters (checked in `analyze`).
+    let body = &input[start..end];
     // Whole piece as one word, using any written pause evidence.
     let mut spelled = String::with_capacity(body.len() + 2);
     if lead_pause {
@@ -166,8 +143,20 @@ fn cll_piece(
     if !whole.accepted && spelled.len() != body.len() {
         whole = morph_parse_stream_piece(body);
     }
-    if let Some(class) = class_of(&whole) {
+    if let Some(class) = class_of(&whole, body) {
         push(input, start, end, class, out);
+        return Ok(());
+    }
+    let brivla_end = |p: &str| {
+        camxes::is_final_short_rafsi(p)
+            || camxes::is_rafsi_string(p)
+            || matches!(
+                class_of(&morph_parse_stream_piece(p), p),
+                Some(WordClass::Gismu | WordClass::Lujvo | WordClass::Fuhivla)
+            )
+    };
+    if camxes::is_y_hyphen_lujvo(body, brivla_end) {
+        push(input, start, end, WordClass::Lujvo, out);
         return Ok(());
     }
     // Continuous segmentation of the piece.
@@ -175,13 +164,14 @@ fn cll_piece(
     let mut cursor = start;
     let mut local = Vec::new();
     for tok in &seg.tokens {
-        let Some(class) = class_of(&tok.result) else {
+        let Some(class) = class_of(&tok.result, &tok.text) else {
             return Err(err(
                 cursor,
                 format!("no morphology for `{}` in `{body}`", tok.text),
             ));
         };
         let rel = input[cursor..end]
+            .to_ascii_lowercase()
             .find(tok.text.as_str())
             .ok_or_else(|| err(cursor, format!("token `{}` not found in input", tok.text)))?;
         let s = cursor + rel;
@@ -196,26 +186,8 @@ fn cll_piece(
     Ok(())
 }
 
-/// Rule-based dialect of one CLL-accepted word: standard when the camxes
-/// grammar alone reads it as exactly this one word of this class, obsolete
-/// otherwise.
-fn word_dialect(word: &str, class: WordClass) -> WordDialect {
-    let g = camxes_morphology_grammar();
-    let mut text = word.to_ascii_lowercase();
-    text.push(' ');
-    let r = g.parse(&text);
-    let standard = matches!(r.2.as_ref(), Ok(nodes) if r.1 == text.len()
-        && matches!(words_from_tree(nodes, word).as_deref(),
-            Ok([w]) if w.class == class && w.text.eq_ignore_ascii_case(word)));
-    if standard {
-        WordDialect::Standard
-    } else {
-        WordDialect::Obsolete
-    }
-}
-
 fn push(input: &str, start: usize, end: usize, class: WordClass, out: &mut Vec<MorphWord>) {
-    let surface = input.get(start..end).unwrap_or_default();
+    let surface = &input[start..end];
     let spans = if class == WordClass::Cmavo {
         split_cmavo_cluster(surface)
     } else {

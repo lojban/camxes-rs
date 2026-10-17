@@ -1,8 +1,8 @@
 //! Stack guard for the recursive-descent PEG parser.
 //!
 //! Deep input (or a left-recursive rule) makes the parser recurse deeply.
-//! Instead of overflowing the thread's stack, a parse (PEG `Peg::parse`,
-//! Earley `EarleyGrammar::parse`) fails with
+//! Instead of overflowing the thread's stack, a parse (`Peg::parse`) fails
+//! with
 //! [`ErrorKind::RecursionLimit`] once the stack pointer gets close to the
 //! end of the current thread's stack. Where the stack bounds can be queried
 //! (Linux glibc/musl, macOS) the whole stack minus a safety margin is used;

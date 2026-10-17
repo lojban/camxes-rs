@@ -85,7 +85,18 @@ impl CmavoLexicon {
                     break;
                 }
             }
-            pieces.push(matched_piece?);
+            let piece = matched_piece?;
+            // A vowel-initial cmavo needs a pause before it (CLL 4.2, camxes
+            // `cmavo` boundaries): never split inside a vowel chain or
+            // diphthong (`co'oi` is not `co'o` + `i`).
+            if !pieces.is_empty()
+                && !piece
+                    .0
+                    .starts_with(|c: char| crate::cll::phonology::is_c(c as u8))
+            {
+                return None;
+            }
+            pieces.push(piece);
         }
         if pieces.len() <= 1 {
             // single piece — not a useful split

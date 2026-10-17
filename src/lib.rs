@@ -15,21 +15,19 @@
 //! ```
 //!
 //! # Cargo features
-//! * `peg` (default) — the PEG engine (`peg::grammar::Peg`) and
-//!   `Engine::Peg`.
-//! * `earley` — the Earley engine (`earley`), `Engine::Earley` and the
-//!   vendored CLL morphology (`cll`).
+//! * `peg` (default) — the PEG engine (`peg::grammar::Peg`), the embedded
+//!   camxes grammars (`grammars`) and `Engine::Peg`.
+//! * `earley` — `Engine::Earley`: the vendored tergenzalvi CLL pipeline
+//!   (`cll`): CFG/Earley morphology and the Chapter 21 Earley parser over
+//!   `src/cll/data/cll21.ebnf` and `src/cll/data/cmavo_selmaho.tsv`.
 //!
-//! At least one engine must be enabled. Shared by both: the grammar texts
-//! ([`grammars`]), the parse-tree types ([`peg::parsing`]), the grammar AST
-//! ([`peg::rule::Rule`]) and the stack guard ([`peg::stack`]).
+//! At least one engine must be enabled. Shared by both: the parse-tree types
+//! ([`peg::parsing`]), [`morphology`] and [`syntax`].
 //!
 //! # Modules
 //! * [`peg`] — the PEG parser generator (engine: feature `peg`).
-//! * `earley` (feature `earley`) — an Earley engine that runs the same PEG
-//!   grammar text.
-//! * [`grammars`] — embedded grammars: Lojban syntax (camxes) and
-//!   Lojban morphology.
+//! * `grammars` (feature `peg`) — embedded camxes grammars: Lojban syntax
+//!   and Lojban morphology.
 //! * [`syntax`] — whole-text Lojban syntax check with either engine.
 //! * [`morphology`] — engine-independent Lojban morphology (word split,
 //!   classes, selma'o, standard/obsolete dialect).
@@ -43,8 +41,7 @@ compile_error!(
 
 #[cfg(feature = "earley")]
 pub mod cll;
-#[cfg(feature = "earley")]
-pub mod earley;
+#[cfg(feature = "peg")]
 pub mod grammars;
 pub mod morphology;
 pub mod peg;

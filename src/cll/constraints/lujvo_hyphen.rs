@@ -135,6 +135,14 @@ fn hyphen_ok(seg: &LujvoSegmentation) -> Result<(), String> {
                 // Possibly required by §4.11.5 tosmabru (C15). Tentatively allow;
                 // C15 rejects if the y is not justified, and rejects if missing when needed.
             }
+            (None, Some('r')) | (None, Some('n'))
+                if previous_piece.shape == RafsiShape::Cvv
+                    && (previous_piece.hyphen_after == Some('n'))
+                        == next_piece.form.starts_with('r') =>
+            {
+                // camxes extension (not CLL): an `r`-hyphen (`n` before
+                // `r`) may follow any CVV rafsi (camxes `cvvr`).
+            }
             (None, Some(g)) => {
                 return Err(format!(
                     "C13 §4.6/§4.11: illegal `{g}`-hyphen after rafsi `{}` before `{}` (not required)",
@@ -187,7 +195,7 @@ pub fn check_lujvo(norm: &str) -> Result<Vec<String>, (ConstraintId, String)> {
     }
 
     let lex = RafsiLexicon::global();
-    let segs = lex.segment_lujvo(body);
+    let segs = lex.segment_lujvo_by_form(body);
     if segs.is_empty() {
         notes.push(format!(
             "C23: no rafsi segmentation found in CLL-era lexicon ({} entries); C13 necessity not fully decidable for this form",
@@ -232,14 +240,6 @@ pub fn check_lujvo(norm: &str) -> Result<Vec<String>, (ConstraintId, String)> {
 /// Whether a candidate string has at least one hyphen-legal rafsi parse.
 pub fn has_valid_rafsi_parse(norm: &str) -> bool {
     check_lujvo(norm).is_ok_and(|notes| notes.iter().any(|n| n.starts_with("C13/C23")))
-}
-
-/// Lighter lujvo-shape probe for C17 (no recursive `recognize`).
-pub fn has_valid_rafsi_parse_light(norm: &str) -> bool {
-    let body = norm.trim_matches('.');
-    let lex = RafsiLexicon::global();
-    let segs = lex.segment_lujvo(body);
-    segs.iter().any(|seg| hyphen_ok(seg).is_ok())
 }
 
 #[cfg(test)]

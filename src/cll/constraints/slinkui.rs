@@ -5,18 +5,15 @@
 //! > form of a lujvo (the so-called "slinku'i test", not discussed further
 //! > in this book)
 //!
-//! Strongest deterministic reading consistent with that sentence:
-//! reject a candidate fu'ivla `F` if there exists any CV (Lojban consonant +
-//! vowel) such that `CV ++ F` has a hyphen-valid rafsi/lujvo parse.
-//!
-//! The named form `slinku'i` fails (e.g. `pa` + `slinku'i` → `paslinku'i`
-//! segments as `pas+lin+ku'i`). Full BPFK/camxes elaborations are NOT
-//! implemented.
+//! camxes-rs uses the camxes reading (local change, not in tergenzalvi):
+//! reject a candidate fu'ivla `F` when `F` minus its first consonant starts
+//! with a camxes rafsi string ([`crate::cll::camxes::starts_with_rafsi_string`]),
+//! i.e. when `CV ++ F` would start with CVC rafsi + rafsi string. The named
+//! form `slinku'i` fails (`pa` + `slinku'i` → `pas+lin+ku'i`).
 
 use super::{Constraint, ConstraintMeta, ConstraintStatus, Reject};
 use crate::cll::cfg::CandidateSpan;
-use crate::cll::constraints::lujvo_hyphen;
-use crate::cll::phonology::{CONSONANTS, VOWELS};
+use crate::cll::phonology::is_c;
 use crate::cll::shapes::MorphClass;
 use std::collections::BTreeSet;
 
@@ -86,23 +83,15 @@ pub fn failing_cv_prefix(fuhivla: &str) -> Option<String> {
 }
 
 fn failing_cv_prefix_uncached(body: &str) -> Option<String> {
-    // Fast path: try a few common CV cmavo first (covers the named `slinku'i` case).
-    const FIRST: &[&str] = &[
-        "ba", "pa", "ka", "ta", "da", "fa", "ga", "ja", "la", "ma", "na", "ra", "sa", "va", "xa",
-        "za", "be", "pe", "ke", "te", "de", "le", "ne", "re", "se", "ve", "xe", "bi", "pi", "ki",
-        "ti", "di", "li", "mi", "ni", "ri", "si", "vi", "xi", "zi", "bo", "po", "ko", "to", "do",
-        "lo", "mo", "no", "ro", "so", "vo", "xo", "zo", "bu", "pu", "ku", "tu", "du", "lu", "mu",
-        "nu", "ru", "su", "vu", "xu", "zu",
-    ];
-    for cv in FIRST {
-        let s = format!("{cv}{body}");
-        if lujvo_hyphen::has_valid_rafsi_parse_light(&s) {
-            return Some((*cv).to_string());
-        }
+    // camxes reading of the test (camxes `!(zunsna rafsi_string)`): a CV
+    // cmavo `Ca` runs into F as a lujvo exactly when F without its first
+    // consonant starts with a rafsi string (`pa` + `slinku'i` → `pas-lin-ku'i`).
+    // A vowel-initial F starts after a pause, so nothing runs into it.
+    let first = body.bytes().next()?;
+    if !is_c(first) {
+        return None;
     }
-    // Exhaustive remainder (any CV not in FIRST — FIRST is already complete C×V).
-    let _ = (CONSONANTS, VOWELS);
-    None
+    crate::cll::camxes::starts_with_rafsi_string(&body[1..]).then(|| format!("{}a", first as char))
 }
 
 #[cfg(test)]

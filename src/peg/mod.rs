@@ -1,10 +1,11 @@
+#[cfg(feature = "peg")]
 pub(crate) mod annotations;
 #[cfg(feature = "peg")]
 pub mod grammar;
 pub mod parsing;
+#[cfg(feature = "peg")]
 pub mod rule;
+#[cfg(feature = "peg")]
 pub mod stack;
-#[cfg(feature = "earley")]
-pub(crate) mod text;
 #[cfg(feature = "peg")]
 pub mod transformer;

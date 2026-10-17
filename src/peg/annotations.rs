@@ -2,16 +2,15 @@
 //!
 //! camxes grammars mark the `zoi`/`la'o` delimiter rules with `#: PUSH`
 //! (opening delimiter), `#: PEEK-DIFF` (quoted word, must differ from the
-//! delimiter) and `#: POP-EQ` (closing delimiter, must equal it). Both
-//! engines honor them, comparing words by [`delimiter_key`]:
-//!
-//! * PEG: a delimiter stack. A PUSH rule pushes the key of its match, a
-//!   PEEK-DIFF rule fails when its match equals the top, a POP-EQ rule fails
-//!   unless its match equals the top and then pops it. The stack is restored
-//!   when a sequence fails and after predicates, and PEEK-DIFF / POP-EQ rules
-//!   are not memoized (their result depends on the stack).
-//! * Earley: each PUSH … POP-EQ stretch of a rule becomes one quote symbol
-//!   that ends at the first closing word equal to the opening one.
+//! delimiter) and `#: POP-EQ` (closing delimiter, must equal it). The PEG
+//! engine honors them, comparing words by [`delimiter_key`], with a
+//! delimiter stack. A PUSH rule pushes the key of its match, a PEEK-DIFF
+//! rule fails when its match equals the top, a POP-EQ rule fails unless its
+//! match equals the top and then pops it. The stack is restored when a
+//! sequence fails and after predicates, and PEEK-DIFF / POP-EQ rules are not
+//! memoized (their result depends on the stack). The Earley engine does not
+//! use these grammars; the CLL Chapter 21 lexer cuts `zoi`/`la'o` quotes out
+//! itself.
 //!
 //! A PUSH rule must be closed by a POP-EQ rule in the same rule body.
 

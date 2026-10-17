@@ -7,14 +7,16 @@
 //!
 //! * `Engine::Peg` (Cargo feature `peg`, on by default) runs the
 //!   camxes-style PEG morphology grammar
-//!   [`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`].
-//! * `Engine::Earley` (Cargo feature `earley`) runs the same grammar on the
-//!   `earley` engine and falls back to the CLL-grounded CFG/Earley
+//!   `grammars::LOJBAN_MORPHOLOGY_GRAMMAR`.
+//! * `Engine::Earley` (Cargo feature `earley`) runs the CLL Chapter 3–4
 //!   morphology of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
-//!   (vendored as `camxes_rs::cll`). Besides everything the PEG grammar accepts
-//!   it also accepts the older CLL dialect that the PEG rejects (for example
-//!   obsolete fu'ivla such as `kuarka`). Each word is flagged
-//!   [`WordDialect::Standard`] or [`WordDialect::Obsolete`] by rule.
+//!   (vendored as `camxes_rs::cll`): CFG/Earley word shapes, constraint
+//!   filters and stream segmentation, with camxes compatibility rules
+//!   (`camxes_rs::cll::camxes`) that choose the camxes word type. Besides the
+//!   words the PEG grammar accepts it also accepts the older CLL dialect
+//!   that the PEG rejects (for example obsolete fu'ivla such as `kuarka`).
+//!   Each word is flagged [`WordDialect::Standard`] or
+//!   [`WordDialect::Obsolete`] by rule.
 //!
 //! ```rust
 //! use camxes_rs::morphology::{analyze, Engine, WordClass};
@@ -27,10 +29,8 @@
 
 #[cfg(feature = "peg")]
 mod peg;
+#[cfg(feature = "peg")]
 mod tree;
-
-#[cfg(feature = "earley")]
-pub use earley::camxes_morphology_grammar;
 
 #[cfg(feature = "earley")]
 mod earley;
@@ -112,14 +112,17 @@ impl MorphWord {
 ///
 /// * `Standard` — the word, on its own, is a word of the given class under
 ///   the standard camxes morphology rules
-///   ([`crate::grammars::LOJBAN_MORPHOLOGY_GRAMMAR`]). Every word the PEG
+///   (`grammars::LOJBAN_MORPHOLOGY_GRAMMAR`). Every word the PEG
 ///   engine produces is standard.
-/// * `Obsolete` — the camxes rules reject the word (or give it another
-///   class), but the CLL Chapter 3–4 rules of tergenzalvi accept it with this
-///   class. Typical obsolete forms: on-glide diphthongs `iV`/`uV` inside
-///   brivla and names (`kuarka`, `guanJOUS`), diphthong + apostrophe + vowel
-///   (`gondii'i`), `CiV'V'V` cmavo (`cia'o'e`), and fu'ivla shapes that camxes
-///   reads differently (`mastla`). Only produced by `Engine::Earley`.
+/// * `Obsolete` — the camxes rules reject the word, but the CLL Chapter 3–4
+///   rules of tergenzalvi accept it with this class. Decided by the camxes
+///   word-form rules in `camxes_rs::cll::camxes::is_obsolete_form`: a word
+///   other than a name must split into camxes syllables (no on-glide right
+///   after a consonant that cannot close a syllable, as in `kuarka`,
+///   `fiesta`, `cia'o'e`, `gondii'i`; no consonant cluster that is not a
+///   coda plus onset, as in `mastla`; no `n` before an affricate); a name
+///   must be a camxes name form (no vowel hiatus such as `ou` in
+///   `guanJOUS`). Only produced by `Engine::Earley`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum WordDialect {
@@ -132,14 +135,11 @@ pub enum WordDialect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Dialect {
-    /// camxes morphology grammar, PEG-preferred reading (both engines).
+    /// camxes morphology grammar (PEG engine).
     Camxes,
-    /// CLL (Chapters 3–4) morphology from tergenzalvi: the older dialect,
-    /// e.g. obsolete fu'ivla such as `kuarka` (Earley engine only).
+    /// CLL (Chapters 3–4) morphology from tergenzalvi with the camxes
+    /// compatibility rules (Earley engine).
     Cll,
-    /// camxes grammar rules, but a derivation the PEG cannot reach because it
-    /// commits to an earlier alternative (Earley engine only, last resort).
-    CamxesComplete,
 }
 
 /// Normalized morphology: the word sequence of the input.
@@ -180,8 +180,8 @@ pub enum Engine {
     #[cfg(feature = "peg")]
     #[default]
     Peg,
-    /// tergenzalvi CLL CFG/Earley morphology (feature `earley`; the default
-    /// engine when `peg` is disabled).
+    /// tergenzalvi CLL CFG/Earley morphology and Chapter 21 grammar (feature
+    /// `earley`; the default engine when `peg` is disabled).
     #[cfg(feature = "earley")]
     #[cfg_attr(not(feature = "peg"), default)]
     Earley,
@@ -377,11 +377,12 @@ mod tests {
     #[cfg(feature = "earley")]
     #[test]
     fn earley_accepts_cll_dialect() {
-        // `matriocka` is accepted by both dialects; the CLL path alone must
-        // still classify it.
-        let m = earley::analyze_cll("matriocka").unwrap();
+        let m = analyze("matriocka", Engine::Earley).unwrap();
         assert_eq!(m.signature(), s(&[("matriocka", WordClass::Fuhivla)]));
         assert_eq!(m.dialect, Dialect::Cll);
+        let m = analyze("kuarka", Engine::Earley).unwrap();
+        assert_eq!(m.signature(), s(&[("kuarka", WordClass::Fuhivla)]));
+        assert!(m.words[0].is_obsolete());
     }
 
     #[cfg(feature = "earley")]

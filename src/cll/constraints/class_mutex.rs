@@ -63,7 +63,13 @@ pub fn filter_classes(
 
     if !has_cc {
         let mut stripped = false;
+        // camxes extension: see `crate::cll::camxes::late_cluster_fuhivla`.
+        let keep_fuhivla =
+            out.contains(&MorphClass::Fuhivla) && crate::cll::camxes::late_cluster_fuhivla(norm);
         for brivla in [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla] {
+            if keep_fuhivla && brivla == MorphClass::Fuhivla {
+                continue;
+            }
             if out.remove(&brivla) {
                 stripped = true;
             }
@@ -73,6 +79,18 @@ pub fn filter_classes(
             notes.push("C02 §4.3: no CC in first five → not brivla".into());
         }
     } else {
+        // camxes extension: see `crate::cll::camxes::cmavo_prefix_splits`.
+        if [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla]
+            .iter()
+            .any(|c| out.contains(c))
+            && crate::cll::camxes::cmavo_prefix_splits(norm)
+        {
+            for brivla in [MorphClass::Gismu, MorphClass::Lujvo, MorphClass::Fuhivla] {
+                out.remove(&brivla);
+            }
+            rejected.push(ConstraintId::C02);
+            notes.push("camxes: starts with a cmavo followed by words → not brivla".into());
+        }
         let mut stripped = false;
         if out.remove(&MorphClass::Cmavo) {
             stripped = true;

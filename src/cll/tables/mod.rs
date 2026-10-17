@@ -80,6 +80,24 @@ pub fn classify_rafsi_shape(rafsi: &str) -> Option<RafsiShape> {
     }
 }
 
+/// Consonant pairs of a rafsi-shaped string: an initial pair must be a
+/// permissible initial (CCV, CCVC, CCVCV), a medial one a permissible medial
+/// pair (CVCC, CVCCV).
+fn rafsi_phonotactics_ok(r: &[u8], shape: RafsiShape) -> bool {
+    use crate::cll::phonology::{is_permissible_initial_pair, is_permissible_medial_pair};
+    match shape {
+        RafsiShape::Ccv => is_permissible_initial_pair(r[0], r[1]),
+        RafsiShape::Long4 | RafsiShape::Final5 => {
+            if is_c(r[1]) {
+                is_permissible_initial_pair(r[0], r[1])
+            } else {
+                is_permissible_medial_pair(r[2], r[3])
+            }
+        }
+        RafsiShape::Cvc | RafsiShape::Cvv => true,
+    }
+}
+
 fn is_c(b: u8) -> bool {
     crate::cll::phonology::is_c(b)
 }
@@ -174,7 +192,18 @@ impl RafsiLexicon {
         let body = body.as_bytes();
         let mut out = Vec::new();
         let mut path = Vec::new();
-        self.dfs_segment(body, 0, &mut path, &mut out);
+        self.dfs_segment(body, 0, false, &mut path, &mut out);
+        out
+    }
+
+    /// camxes extension (not CLL): segmentations into rafsi-**shaped**
+    /// pieces (CVC, CCV, CVV, CV'V, 4-letter, final 5-letter), whether or not
+    /// the lexicon lists them. camxes decides lujvo by form alone.
+    pub fn segment_lujvo_by_form(&self, body: &str) -> Vec<LujvoSegmentation> {
+        let body = body.as_bytes();
+        let mut out = Vec::new();
+        let mut path = Vec::new();
+        self.dfs_segment(body, 0, true, &mut path, &mut out);
         out
     }
 
@@ -182,6 +211,7 @@ impl RafsiLexicon {
         &self,
         body: &[u8],
         i: usize,
+        by_form: bool,
         path: &mut Vec<RafsiPiece>,
         out: &mut Vec<LujvoSegmentation>,
     ) {
@@ -209,12 +239,15 @@ impl RafsiLexicon {
             let Ok(cand) = std::str::from_utf8(&body[i..i + len]) else {
                 continue;
             };
-            if !self.is_rafsi(cand) {
+            if !by_form && !self.is_rafsi(cand) {
                 continue;
             }
             let Some(shape) = classify_rafsi_shape(cand) else {
                 continue;
             };
+            if by_form && !rafsi_phonotactics_ok(cand.as_bytes(), shape) {
+                continue;
+            }
             let at_end = i + len == body.len();
             if at_end && matches!(shape, RafsiShape::Cvc | RafsiShape::Long4) {
                 continue;
@@ -232,7 +265,7 @@ impl RafsiLexicon {
                     source,
                     hyphen_after: None,
                 });
-                self.dfs_segment(body, i + len, path, out);
+                self.dfs_segment(body, i + len, by_form, path, out);
                 path.pop();
                 continue;
             }
@@ -251,7 +284,7 @@ impl RafsiLexicon {
                     source: source.clone(),
                     hyphen_after: Some(h),
                 });
-                self.dfs_segment(body, rest_i + 1, path, out);
+                self.dfs_segment(body, rest_i + 1, by_form, path, out);
                 path.pop();
             }
             path.push(RafsiPiece {
@@ -260,7 +293,7 @@ impl RafsiLexicon {
                 source,
                 hyphen_after: None,
             });
-            self.dfs_segment(body, rest_i, path, out);
+            self.dfs_segment(body, rest_i, by_form, path, out);
             path.pop();
         }
     }

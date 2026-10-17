@@ -199,66 +199,62 @@ fn main() {
     );
 }
 
-/// Same grammar, both engines, no adapters or fallbacks.
+/// Each engine's core word recogniser, without the `morphology` adapters:
+/// the camxes PEG morphology grammar versus the vendored CLL single-word
+/// pipeline (`cll::constraints::morph_parse`: Earley shape grammar plus
+/// constraint filters). They are not the same grammar, so the acceptance
+/// counts differ (the PEG grammar also splits cmavo clusters, the CLL
+/// recogniser accepts a single word only).
 fn raw_grammar_timing(entries: &[(String, String)]) {
+    use camxes_rs::cll::constraints::morph_parse;
     use camxes_rs::grammars::LOJBAN_MORPHOLOGY_GRAMMAR;
-    use camxes_rs::morphology::camxes_morphology_grammar;
     use camxes_rs::peg::grammar::Peg;
     let peg = Peg::new(LOJBAN_MORPHOLOGY_GRAMMAR.0, LOJBAN_MORPHOLOGY_GRAMMAR.1).unwrap();
-    let earley = camxes_morphology_grammar();
     let inputs: Vec<String> = entries
         .iter()
-        .map(|(w, _)| format!("{} ", w.to_ascii_lowercase()))
+        .map(|(w, _)| w.to_ascii_lowercase())
         .collect();
     let bytes: usize = inputs.iter().map(|s| s.len()).sum();
-    let mut same_end = 0usize;
     let t = Instant::now();
-    let pe: Vec<Option<usize>> = inputs
+    let peg_ok = inputs
         .iter()
-        .map(|i| {
-            let r = peg.parse(i);
-            r.2.is_ok().then_some(r.1)
+        .filter(|i| {
+            let input = format!("{i} ");
+            let r = peg.parse(&input);
+            r.2.is_ok() && r.1 == input.len()
         })
-        .collect();
+        .count();
     let tp = t.elapsed();
+    let mut worst: Vec<(Duration, &str)> = Vec::with_capacity(inputs.len());
+    let mut cll_ok = 0usize;
     let t = Instant::now();
-    let ee: Vec<Option<usize>> = inputs
-        .iter()
-        .map(|i| {
-            let r = earley.parse(i);
-            r.2.is_ok().then_some(r.1)
-        })
-        .collect();
-    let te = t.elapsed();
-    for (a, b) in pe.iter().zip(&ee) {
-        if a == b {
-            same_end += 1;
+    for i in &inputs {
+        let t1 = Instant::now();
+        if morph_parse(i).accepted {
+            cll_ok += 1;
         }
+        worst.push((t1.elapsed(), i.as_str()));
     }
-    let mut worst: Vec<(Duration, &str)> = inputs
-        .iter()
-        .map(|i| {
-            let t = Instant::now();
-            let _ = earley.parse(i);
-            (t.elapsed(), i.as_str())
-        })
-        .collect();
+    let te = t.elapsed();
     worst.sort_by_key(|a| std::cmp::Reverse(a.0));
-    println!("raw grammar on {} inputs ({} bytes)", inputs.len(), bytes);
     println!(
-        "  peg    {:?}  ({:.0} inputs/s, {:.0} KB/s)",
+        "raw recognisers on {} inputs ({} bytes)",
+        inputs.len(),
+        bytes
+    );
+    println!(
+        "  peg grammar     {:?}  ({:.0} inputs/s, {:.0} KB/s), accepted {peg_ok}",
         tp,
         inputs.len() as f64 / tp.as_secs_f64(),
         bytes as f64 / 1024.0 / tp.as_secs_f64()
     );
     println!(
-        "  earley {:?}  ({:.0} inputs/s, {:.0} KB/s)",
+        "  cll morph_parse {:?}  ({:.0} inputs/s, {:.0} KB/s), accepted {cll_ok}",
         te,
         inputs.len() as f64 / te.as_secs_f64(),
         bytes as f64 / 1024.0 / te.as_secs_f64()
     );
-    println!("  same match end: {same_end}/{}", inputs.len());
     for (d, i) in worst.iter().take(5) {
-        println!("  slow earley {:?} {:.60}", d, i);
+        println!("  slow cll {:?} {:.60}", d, i);
     }
 }
