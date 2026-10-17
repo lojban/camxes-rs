@@ -91,9 +91,21 @@ arguments). The embedded grammars are `(start_rule, text)` tuples.
 | `'abc'`, `"abc"` | literal |
 | `[abc]`, `[a-z]` | character class / range |
 | `.` | any character |
-| `rule <- e #: PUSH` | annotation (see below), ignored by the PEG engine |
+| `rule <- e #: PUSH` | back-reference annotation: `PUSH`, `PEEK-DIFF`, `POP-EQ` (see below) |
 
 The grammar text has no comment syntax apart from these annotations.
+
+**Back-references** (ilmentufa's annotations, used by camxes for
+`zoi`/`la'o`): a `#: PUSH` rule remembers the word it matched, a
+`#: PEEK-DIFF` rule fails if its match equals the remembered word, and a
+`#: POP-EQ` rule matches only if its match equals it (then forgets it).
+Words are compared after normalization (ASCII case, pauses `.`, commas and
+spaces ignored, `h` ≡ `'`; `src/peg/annotations.rs`, shared by both
+engines). The PEG engine keeps a delimiter stack that is restored when a
+sequence fails and after predicates; PEEK-DIFF / POP-EQ rules are not
+memoized. A PUSH rule must be closed by a POP-EQ rule in the same rule
+body. So in camxes `(zoi_word spaces)* zoi_close` stops at the first word
+equal to the opening delimiter instead of swallowing it.
 `ParseResult(_, end, result)` gives the end of the match of the start rule
 (the PEG matches a prefix) and the tree of `ParseNode::NonTerminal` /
 `ParseNode::Terminal` nodes with byte spans.
@@ -124,13 +136,13 @@ same text, and compiles it to a CFG:
 * `&e` / `!e` become zero-width lookahead symbols, decided by a separate
   Earley recognition of `e` from the current position ("does `e` derive some
   prefix of the rest?"), memoized per (rule, position).
-* `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` (ilmentufa's annotations, used by
-  camxes for `zoi`/`la'o`): every `open … close` stretch of a rule, where
+* `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ`: every `open … close` stretch of a rule, where
   `open` is a PUSH rule and `close` a POP-EQ rule, becomes one *quote*
   symbol. It matches only if the text of `close` equals the text of `open`
   (ASCII case, pauses `.`, commas and spaces ignored, `h` ≡ `'`), and it
   ends at the **first** such word, so no quoted (PEEK-DIFF) word can equal
-  the delimiter.
+  the delimiter. This gives the same accept/reject decisions and
+  `zoi_open` / `zoi_word` / `zoi_close` nodes as the PEG delimiter stack.
 * Charts are FIRST-set filtered and sized to the span a sub-recognition can
   reach; ε-completion is handled dynamically (Aycock–Horspool).
 
@@ -269,14 +281,16 @@ assert!(!syntax::accepts("lo cu klama", Engine::Peg));
 let tree = syntax::parse("mi klama", Engine::Peg).unwrap();
 assert!(!tree.is_empty());
 
-#[cfg(feature = "earley")]
-{
-    assert!(syntax::accepts("lo prenu poi klama cu tavla", Engine::Earley));
-    // zoi/la'o quotes need the same delimiter word on both sides.
-    assert!(syntax::accepts("zoi gy. hello world .gy glico", Engine::Earley));
-    assert!(syntax::accepts("mi klama la'o dy. New York .dy", Engine::Earley));
-    assert!(!syntax::accepts("zoi gy. hello .dy glico", Engine::Earley));
+// zoi/la'o quotes need the same delimiter word on both sides (both engines).
+for &engine in Engine::available() {
+    assert!(syntax::accepts("zoi gy. hello world .gy glico", engine));
+    assert!(syntax::accepts("mi klama la'o dy. New York .dy", engine));
+    assert!(!syntax::accepts("zoi gy. hello .dy glico", engine));
+    assert!(!syntax::accepts("mi cusku zoi gy. hello", engine));
 }
+
+#[cfg(feature = "earley")]
+assert!(syntax::accepts("lo prenu poi klama cu tavla", Engine::Earley));
 ```
 
 The Earley engine first takes the PEG-preferred derivation and otherwise
@@ -336,12 +350,11 @@ or `RUST_LOG=debug cargo run --example cmaxes-test`.
 
 ## Known limitations
 
-* **PEG and `zoi`/`la'o`:** the PEG engine has no back-references and its
-  greedy `(zoi_word spaces)*` swallows the closing delimiter, so it rejects
-  every `zoi`/`la'o` quote. Use `Engine::Earley`.
-* **Earley quotes** compare delimiters after normalization (case, pauses,
-  commas, `h`/`'`) and end at the first matching word; `PEEK-DIFF` is
-  enforced through that rule rather than as a separate check.
+* **Back-references:** delimiters are compared after normalization (case,
+  pauses, commas, `h`/`'`). The Earley engine enforces `PEEK-DIFF` through
+  "the quote ends at the first matching word" rather than as a separate
+  check; the PEG engine checks it directly. Both require the PUSH and
+  POP-EQ rules in the same rule body.
 * **Trees differ:** the Earley tree is the derivation it picked; tree shapes
   are not guaranteed to match the PEG's (the parity test compares word
   split, classes and selma'o only).

@@ -296,10 +296,10 @@ mod tests {
     const QUOTE_GRAMMAR: &str = r#"
     text <- (quote / word) (' '+ (quote / word))* !.
     quote <- 'Q' ' ' open ' ' (body ' ')* close
-    open <- [a-z]+ #: PUSH
-    body <- [a-z]+ #: PEEK-DIFF
-    close <- [a-z]+ #: POP-EQ
-    word <- [a-z]+
+    open <- [a-z']+ #: PUSH
+    body <- [a-z']+ #: PEEK-DIFF
+    close <- [a-z']+ #: POP-EQ
+    word <- [a-z']+
     "#;
 
     #[test]
@@ -319,8 +319,26 @@ mod tests {
     }
 
     #[test]
-    fn peg_engine_ignores_annotations() {
-        assert!(Peg::new("text", QUOTE_GRAMMAR).is_ok());
+    fn quotes_agree_with_peg_engine() {
+        let peg = Peg::new("text", QUOTE_GRAMMAR).unwrap();
+        let earley = EarleyGrammar::new("text", QUOTE_GRAMMAR).unwrap();
+        for input in [
+            "Q gy hello gy",
+            "Q gy hello world gy after",
+            "Q gy gy",
+            "Q gy hello dy",
+            "Q gy hello",
+            "Q gy a gy x gy",
+            "w Q xu'u a b xuhu w",
+        ] {
+            let p = peg.parse(input);
+            let e = earley.parse_complete(input);
+            let p_ok = p.2.is_ok() && p.1 == input.len();
+            assert_eq!(p_ok, e.2.is_ok(), "{input}");
+            if let (Ok(pn), Ok(en)) = (p.2.as_ref(), e.2.as_ref()) {
+                assert_eq!(shape(pn), shape(en), "tree for {input:?}");
+            }
+        }
     }
 
     #[test]

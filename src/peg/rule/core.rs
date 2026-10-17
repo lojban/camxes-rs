@@ -1,4 +1,5 @@
 use super::types::Rule;
+use crate::peg::annotations::{delimiter_key, Annotation};
 use crate::peg::grammar::Peg;
 use crate::peg::parsing::{ErrorKind, ParseError, ParseNode, ParseResult, Span};
 use log::{debug, log_enabled, Level};
@@ -63,6 +64,14 @@ impl Rule {
             }
 
             Rule::NonTerminal(name) => {
+                let annotation = if peg.annotations.is_empty() {
+                    None
+                } else {
+                    peg.annotations.get(name).copied()
+                };
+                if let Some(annotation) = annotation {
+                    return self.parse_annotated(peg, name, annotation, input, position, depth);
+                }
                 let key = (name.clone(), position);
 
                 if let Some(cached_result) = peg.memo.borrow().get(&key) {
@@ -156,6 +165,7 @@ impl Rule {
             Rule::Sequence(sequence) => {
                 let mut captures = Vec::with_capacity(sequence.len());
                 let mut pos = position;
+                let saved = peg.save_delimiters();
 
                 for expr in sequence {
                     let res = expr.parse(peg, input, pos, depth);
@@ -165,6 +175,7 @@ impl Rule {
                             captures.extend(m.iter().cloned());
                         }
                         Err(e) => {
+                            peg.restore_delimiters(saved);
                             return ParseResult(1, position, Arc::new(Err(e.clone())));
                         }
                     }
@@ -205,7 +216,9 @@ impl Rule {
             }
 
             Rule::And(expr) => {
+                let saved = peg.save_delimiters();
                 let res = expr.parse(peg, input, position, depth);
+                peg.restore_delimiters(saved);
                 if res.2.is_ok() {
                     ParseResult(1, position, Arc::new(Ok(vec![])))
                 } else {
@@ -215,7 +228,9 @@ impl Rule {
             }
 
             Rule::Not(expr) => {
+                let saved = peg.save_delimiters();
                 let res = expr.parse(peg, input, position, depth);
+                peg.restore_delimiters(saved);
                 match res.2.as_ref() {
                     Ok(m) => ParseResult(
                         1,
@@ -299,6 +314,117 @@ impl Rule {
                     )
                 }
             }
+        }
+    }
+
+    /// A `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` rule: parse the rule
+    /// normally, then apply the delimiter-stack check to the matched text.
+    /// PUSH results are memoized (the push is replayed on a cache hit); the
+    /// other two depend on the stack and are not.
+    fn parse_annotated(
+        &self,
+        peg: &Peg,
+        name: &str,
+        annotation: Annotation,
+        input: &str,
+        position: usize,
+        depth: usize,
+    ) -> ParseResult {
+        let result = if annotation == Annotation::Push {
+            let memo_key = (name.to_string(), position);
+            let cached = peg.memo.borrow().get(&memo_key).cloned();
+            match cached {
+                Some(cached) => cached,
+                None => {
+                    let fresh = Rule::NonTerminal(name.to_string())
+                        .parse_unannotated(peg, input, position, depth);
+                    peg.memo.borrow_mut().insert(memo_key, fresh.clone());
+                    fresh
+                }
+            }
+        } else {
+            Rule::NonTerminal(name.to_string()).parse_unannotated(peg, input, position, depth)
+        };
+        if result.2.is_err() {
+            return result;
+        }
+        let word = delimiter_key(&input.as_bytes()[position..result.1]);
+        let mut stack = peg.delimiters.borrow_mut();
+        let accepted = match annotation {
+            Annotation::Push => {
+                stack.push(word);
+                true
+            }
+            Annotation::PeekDiff => stack.last() != Some(&word),
+            Annotation::PopEq => {
+                let equal = stack.last() == Some(&word);
+                if equal {
+                    stack.pop();
+                }
+                equal
+            }
+        };
+        if accepted {
+            result
+        } else {
+            ParseResult(
+                1,
+                position,
+                Arc::new(Err(ParseError {
+                    position,
+                    rule_name: self.error_description(),
+                    error: ErrorKind::NonTerminalDoesNotMatch,
+                    cause: None,
+                })),
+            )
+        }
+    }
+
+    /// Parse a nonterminal's body without memoization or annotation checks.
+    fn parse_unannotated(
+        &self,
+        peg: &Peg,
+        input: &str,
+        position: usize,
+        depth: usize,
+    ) -> ParseResult {
+        let Rule::NonTerminal(name) = self else {
+            return self.parse(peg, input, position, depth);
+        };
+        let Some(rule) = peg.rules.get(name) else {
+            return ParseResult(
+                1,
+                position,
+                Arc::new(Err(ParseError {
+                    position,
+                    rule_name: self.error_description(),
+                    error: ErrorKind::NonTerminalDoesNotExist(name.clone()),
+                    cause: None,
+                })),
+            );
+        };
+        match rule.parse(peg, input, position, depth + 1) {
+            ParseResult(cost, new_pos, ref payload) => match payload.as_ref() {
+                Ok(matches) => ParseResult(
+                    cost,
+                    new_pos,
+                    Arc::new(Ok(vec![ParseNode::NonTerminal {
+                        name: name.clone(),
+                        span: Span(position, new_pos),
+                        children: matches.clone(),
+                    }])),
+                ),
+                Err(inner) => ParseResult(
+                    cost,
+                    position,
+                    Arc::new(Err(ParseError {
+                        position,
+                        rule_name: self.error_description(),
+                        error: ErrorKind::NonTerminalDoesNotMatch,
+                        cause: Some(Box::new(inner.clone())),
+                    })),
+                ),
+            },
         }
     }
 }

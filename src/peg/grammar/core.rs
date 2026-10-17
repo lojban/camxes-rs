@@ -14,24 +14,27 @@ impl Peg {
     pub fn new(start: &str, grammar: &str) -> GrammarResult<Self> {
         // Token spans index into the text that was parsed, so parse the same
         // trimmed text the transformer slices (indented grammars used to panic).
-        // `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations only matter to
-        // the Earley engine; the PEG engine parses the plain rules.
-        let (grammar, _) = crate::peg::annotations::strip_annotations(grammar);
+        // `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations are taken off
+        // the rule lines and applied while parsing (delimiter stack).
+        let (grammar, annotations) = crate::peg::annotations::strip_annotations(grammar);
         let grammar = grammar.trim();
         let parser = Self::bootstrap();
-        match parser.parse(grammar) {
+        let mut peg = match parser.parse(grammar) {
             ParseResult(_, _, ref payload) => match payload.as_ref() {
                 Ok(tokens) => Transformer { source: grammar }
                     .build(start, tokens.clone())
-                    .map_err(GrammarError::from),
-                Err(e) => Err(GrammarError::from(e.clone())),
+                    .map_err(GrammarError::from)?,
+                Err(e) => return Err(GrammarError::from(e.clone())),
             },
-        }
+        };
+        peg.annotations = Arc::new(annotations.into_iter().collect());
+        Ok(peg)
     }
 
     pub fn parse(&self, input: &str) -> ParseResult {
         // Clear the memoization cache before starting a new parse
         self.memo.borrow_mut().clear();
+        self.delimiters.borrow_mut().clear();
         Rule::NonTerminal(self.start.clone()).parse(self, input, 0, 0)
     }
 
@@ -53,6 +56,8 @@ impl Peg {
             start: TEXT.to_string(),
             rules: Arc::new(grammar_builder.rules),
             memo: RefCell::new(MemoMap::default()),
+            annotations: Arc::default(),
+            delimiters: RefCell::default(),
         }
     }
 }

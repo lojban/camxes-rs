@@ -2,6 +2,7 @@
 //! extraction.
 
 use super::{EarleyGrammar, NtKind, Sym};
+use crate::peg::annotations::delimiter_key;
 use crate::peg::parsing::{ParseNode, Span};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::rc::Rc;
@@ -61,18 +62,6 @@ type Ends = Rc<Vec<u32>>;
 /// Matches of one quote from a position: `(open end, middle end, close end)`,
 /// preferred first.
 type QuoteMatches = Rc<Vec<(u32, u32, u32)>>;
-
-/// Normalized delimiter word for `#: PUSH` / `#: POP-EQ` comparison: ASCII
-/// lower case, pauses, commas and whitespace dropped, `h` ≡ `'`.
-fn delimiter_key(text: &[u8]) -> Vec<u8> {
-    text.iter()
-        .filter(|b| !matches!(b, b'.' | b',' | b'?' | b'!') && !b.is_ascii_whitespace())
-        .map(|b| match b.to_ascii_lowercase() {
-            b'h' => b'\'',
-            other => other,
-        })
-        .collect()
-}
 
 pub(super) struct Parse<'g> {
     g: &'g EarleyGrammar,
@@ -493,18 +482,5 @@ impl<'g> Parse<'g> {
             }
             pos = c;
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::delimiter_key;
-
-    #[test]
-    fn delimiter_key_normalizes_like_camxes() {
-        assert_eq!(delimiter_key(b"gy"), delimiter_key(b".GY. "));
-        assert_eq!(delimiter_key(b"xu'u"), delimiter_key(b"xuhu"));
-        assert_eq!(delimiter_key(b"dja,n"), delimiter_key(b"djan"));
-        assert_ne!(delimiter_key(b"gy"), delimiter_key(b"dy"));
     }
 }

@@ -12,14 +12,14 @@
 //!   grammar that does. This is a superset of the PEG result.
 //!
 //! `zoi`/`la'o` quotes: the grammar marks the delimiter rules with
-//! ilmentufa's `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations. The
-//! Earley engine enforces them: `zoi X. … .X` is accepted only when the
-//! closing word equals the opening one (case, pauses and commas ignored,
-//! `h` ≡ `'`) and the quote ends at the first such word, so the quoted text
-//! never contains the delimiter as a separate word; `zoi gy. hello .dy glico`
-//! is rejected. The PEG engine has no back-references and its greedy
-//! repetition swallows the closing delimiter, so it rejects every `zoi`/`la'o`
-//! quote.
+//! ilmentufa's `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations, and both
+//! engines enforce them: `zoi X. … .X` is accepted only when the closing word
+//! equals the opening one (case, pauses and commas ignored, `h` ≡ `'`), and
+//! the quote ends at the first such word, so the quoted text never contains
+//! the delimiter as a separate word; `zoi gy. hello .dy glico` is rejected.
+//! The PEG engine uses a delimiter stack, the Earley engine a quote symbol
+//! (see [`crate::peg`] and [`crate::earley`]); both produce `zoi_open` /
+//! `zoi_word` / `zoi_close` nodes.
 //!
 //! ```rust
 //! use camxes_rs::morphology::Engine;
@@ -28,10 +28,10 @@
 //! assert!(syntax::accepts("lo gerku cu batci lo mlatu", Engine::Peg));
 //! assert!(!syntax::accepts("lo cu klama", Engine::Peg));
 //!
-//! #[cfg(feature = "earley")]
-//! {
-//!     assert!(syntax::accepts("zoi gy. hello world .gy glico", Engine::Earley));
-//!     assert!(!syntax::accepts("zoi gy. hello .dy glico", Engine::Earley));
+//! for &engine in Engine::available() {
+//!     assert!(syntax::accepts("zoi gy. hello world .gy glico", engine));
+//!     assert!(syntax::accepts("mi klama la'o dy. New York .dy", engine));
+//!     assert!(!syntax::accepts("zoi gy. hello .dy glico", engine));
 //! }
 //! ```
 

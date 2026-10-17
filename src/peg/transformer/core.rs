@@ -28,6 +28,8 @@ impl Transformer<'_> {
                 rules: self.build_grammar_rules(tokens)?,
                 start: start_rule.to_string(),
                 memo: RefCell::new(MemoMap::default()),
+                annotations: Arc::default(),
+                delimiters: RefCell::default(),
             }),
             [ParseNode::NonTerminal { name: n, .. }] => Err(
                 TransformError::CstShouldStartWithGrammar(format!("Found '{n}' instead!")),

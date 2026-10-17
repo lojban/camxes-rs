@@ -1,5 +1,7 @@
 //! Whole-text syntax: both engines must accept basic Lojban constructions
-//! and reject clearly ungrammatical texts. Tree shapes are not compared.
+//! (including `zoi`/`la'o` quotes with matching delimiters) and reject
+//! clearly ungrammatical texts. Tree shapes are not compared, except for the
+//! `zoi` delimiter nodes.
 
 use camxes_rs::morphology::Engine;
 use camxes_rs::syntax::accepts;
@@ -11,11 +13,6 @@ enum Expect {
     Ok,
     /// Both engines reject.
     Bad,
-    /// Only the Earley engine accepts: `zoi`/`la'o` quotes need delimiter
-    /// back-references (`#: PUSH`/`#: POP-EQ`), which only the Earley engine
-    /// implements; the PEG engine's greedy repetition swallows the closing
-    /// delimiter (see `camxes_rs::syntax`).
-    EarleyOnly,
 }
 use Expect::*;
 
@@ -48,29 +45,21 @@ const CASES: &[(&str, &str, Expect)] = &[
     (".i with ijek", "mi klama .ije do tavla", Ok),
     ("lu ... li'u quote", "lu mi klama li'u jufra", Ok),
     ("zo quote", "zo klama valsi", Ok),
-    ("zoi quote", "zoi gy. hello .gy glico", EarleyOnly),
+    ("zoi quote", "zoi gy. hello .gy glico", Ok),
     (
         "zoi multi-word text",
         "mi cusku zoi gy. hello world .gy",
-        EarleyOnly,
+        Ok,
     ),
-    (
-        "zoi delimiter case/pauses",
-        "zoi GY. hello .gy. glico",
-        EarleyOnly,
-    ),
-    ("zoi empty text", "zoi gy. .gy glico", EarleyOnly),
+    ("zoi delimiter case/pauses", "zoi GY. hello .gy. glico", Ok),
+    ("zoi empty text", "zoi gy. .gy glico", Ok),
     (
         "zoi other word inside text",
         "zoi gy. mi .dy. klama .gy cu jufra",
-        EarleyOnly,
+        Ok,
     ),
-    ("la'o name", "mi klama la'o dy. New York .dy", EarleyOnly),
-    (
-        "la'o name as subject",
-        "la'o gy. Joe .gy cu klama",
-        EarleyOnly,
-    ),
+    ("la'o name", "mi klama la'o dy. New York .dy", Ok),
+    ("la'o name as subject", "la'o gy. Joe .gy cu klama", Ok),
     ("number PA", "mi viska ci gerku", Ok),
     ("number with MOI", "mi pamoi", Ok),
     ("MEX li ... du", "li re su'i re du li vo", Ok),
@@ -132,7 +121,6 @@ fn basic_grammar_both_engines() {
             let want = match expect {
                 Ok => true,
                 Bad => false,
-                EarleyOnly => engine != Engine::Peg,
             };
             row.push_str(&format!(" {:>6}", if got { "ok" } else { "reject" }));
             if got != want {
@@ -152,11 +140,10 @@ fn basic_grammar_both_engines() {
     );
 }
 
-/// The Earley tree of a `zoi` quote shows the delimiters and the quoted
+/// Both engines' trees of a `zoi` quote show the delimiters and the quoted
 /// words, and the quote ends at the first matching delimiter.
-#[cfg(feature = "earley")]
 #[test]
-fn earley_zoi_tree_uses_matching_delimiters() {
+fn zoi_tree_uses_matching_delimiters() {
     use camxes_rs::peg::parsing::ParseNode;
 
     fn spans(nodes: &[ParseNode], name: &str, out: &mut Vec<(usize, usize)>) {
@@ -176,15 +163,18 @@ fn earley_zoi_tree_uses_matching_delimiters() {
     }
 
     let text = "zoi gy. hello .dy world .gy glico";
-    let tree = camxes_rs::syntax::parse(text, Engine::Earley).expect("accepted");
-    let collect = |name: &str| {
-        let mut out = Vec::new();
-        spans(&tree, name, &mut out);
-        out.into_iter()
-            .map(|(s, e)| text[s..e].trim_matches(|c: char| c == '.' || c == ' '))
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(collect("zoi_open"), ["gy"]);
-    assert_eq!(collect("zoi_word"), ["hello", "dy", "world"]);
-    assert_eq!(collect("zoi_close"), ["gy"]);
+    for &engine in engines() {
+        let tree = camxes_rs::syntax::parse(text, engine).expect("accepted");
+        let collect = |name: &str| {
+            let mut out = Vec::new();
+            spans(&tree, name, &mut out);
+            out.into_iter()
+                .map(|(s, e)| text[s..e].trim_matches(|c: char| c == '.' || c == ' '))
+                .collect::<Vec<_>>()
+        };
+        let engine = engine.name();
+        assert_eq!(collect("zoi_open"), ["gy"], "{engine}");
+        assert_eq!(collect("zoi_word"), ["hello", "dy", "world"], "{engine}");
+        assert_eq!(collect("zoi_close"), ["gy"], "{engine}");
+    }
 }

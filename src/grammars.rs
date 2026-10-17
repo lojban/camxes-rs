@@ -154,9 +154,8 @@ pause_0 <- [ ,.]+
 /// From ilmentufa's `camxes.peg` (<https://github.com/lojban/ilmentufa>),
 /// based on camxes.js by Masato Hagiwara (MIT license), comments stripped.
 /// The ilmentufa `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations on
-/// `zoi_open` / `zoi_word` / `zoi_close` are kept: the Earley engine uses
-/// them so that `zoi`/`la'o` quotes need matching delimiters; the PEG engine
-/// ignores them (see [`crate::syntax`]).
+/// `zoi_open` / `zoi_word` / `zoi_close` are kept: both engines use them so
+/// that `zoi`/`la'o` quotes need matching delimiters (see [`crate::syntax`]).
 pub const LOJBAN_GRAMMAR: (&str, &str) = (
     "text",
     r##"text <- intro_null NAI_clause* text_part_2 (!gek joik_jek)? text_1? faho_clause EOF?

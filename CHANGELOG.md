@@ -36,16 +36,20 @@ with a major bump rather than claiming compatibility with the 1.x API.
   tenses, NU/DU'U, POI/NOI/GOI, JE/.e/GIhA/GA, .i, lu/li'u, zo, numbers and
   MEX, vocatives, UI, lujvo/fu'ivla/cmevla in sentences, ...) and
   ungrammatical texts.
-- Delimiter back-references in the Earley engine: ilmentufa-style rule
-  annotations `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` are compiled into a
-  quote symbol, so `zoi X. … .X` / `la'o X. … .X` is accepted only when the
+- Delimiter back-references in both engines: ilmentufa-style rule
+  annotations `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ`. The PEG engine keeps
+  a delimiter stack (restored on failed sequences and after predicates;
+  PEEK-DIFF / POP-EQ rules are not memoized); the Earley engine compiles
+  each PUSH … POP-EQ stretch into a quote symbol. Normalization is shared
+  (`peg::annotations`). So `zoi X. … .X` / `la'o X. … .X` is accepted only when the
   closing word equals the opening one (case, pauses, commas ignored, `h` ≡
   `'`) and the quote ends at the first such word (the quoted text never
   contains the delimiter as a separate word). `zoi gy. hello .dy glico` is
-  rejected. `LOJBAN_GRAMMAR` carries the annotations on `zoi_open` /
-  `zoi_word` / `zoi_close`; the PEG front end accepts and ignores them (the
-  PEG engine still rejects `zoi`/`la'o` quotes because its greedy repetition
-  swallows the closing delimiter).
+  rejected, and la'o names parse. `LOJBAN_GRAMMAR` carries the annotations
+  on `zoi_open` / `zoi_word` / `zoi_close`; both engines produce those nodes
+  and agree on every `zoi`/`la'o` case in `tests/grammar_basics.rs`. (Before
+  this, the PEG engine's greedy repetition swallowed the closing delimiter
+  and every `zoi` quote was rejected.)
 - `cll` module (feature `earley`): vendored copy of tergenzalvi (commit
   e07f176, same author, included under this crate's MIT license) providing the CLL morphology and cmavo lexicon,
   so the crate has no git dependency and can be published.
@@ -84,6 +88,9 @@ with a major bump rather than claiming compatibility with the 1.x API.
   `LICENSE` at the repository root.
 
 ### Changed
+- `Peg` gained crate-private fields (annotations, delimiter stack), so it can
+  no longer be built with a struct literal outside the crate; use
+  `Peg::new` (the public fields `rules`, `start`, `memo` are unchanged).
 - Benchmarks use `std::hint::black_box` instead of `criterion::black_box`
   and measure the camxes Lojban grammar (both engines with `--features
   earley`) instead of the removed Loglan grammar.
