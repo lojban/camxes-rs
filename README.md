@@ -159,8 +159,11 @@ prints nothing but an "in sync" line when they match. Where CLL is silent,
 both repositories fill the gap the same way (each case cites the CLL text
 it relies on): experimental cmavo with three or more vowels and `y`
 apostrophe chains (§4.2), apostrophe vowel chains in brivla (§3.4), `y`
-chains in names (§4.8), lujvo recognized by rafsi *form* with the §4.5
-restrictions, the literal slinku'i test of §4.7 rule 3, the §4.6/§4.7 rule
+chains in names (§4.8), in the camxes dialect (see [Dialect
+options](#dialect-options-earley)) lujvo recognized by rafsi *form* with the
+§4.5 restrictions, consonant-only names such as
+`.d.` or `.rl.` when every adjacent pair and triple is permissible (§3.7;
+`mz`, `ndj` are not), the literal slinku'i test of §4.7 rule 3, the §4.6/§4.7 rule
 that a word breaking up into a cmavo followed by cmavo/gismu/lujvo is not a
 brivla (`lerenanmu` = `le` + `re` + `nanmu`), digits as `PA` cmavo, and
 punctuation-only tokens (`-`) skipped. A text with a word the morphology
@@ -179,6 +182,47 @@ engines](#differences-between-the-peg-camxes-and-earley-cll-engines).
     assert!(recognize("creka").classes.contains(&MorphClass::Gismu));
     assert!(parse_text("mi viska le gerku").accepted);
     assert!(!parse_text("zoi gy. hello .dy cu glico").accepted);
+}
+```
+
+### Dialect options (Earley)
+
+The CLL pipeline takes a `MorphOptions` (re-exported as
+`camxes_rs::morphology::MorphOptions`) with **one dialect switch**,
+`camxes_dialect`, plus the separate §4.16 proposal flag `rafsi_fuhivla`:
+
+| Setting | Strict CLL (`camxes_dialect: false`) | camxes dialect (`camxes_dialect: true`) |
+|---|---|---|
+| Lujvo rafsi | only rafsi of the CLL-era (1994) list | also rafsi outside the list, recognised by §4.5 shape (CVC, CVV/CV'V, CCV, 4-letter + `y`, final 5-letter); the §4.6 hyphen and §4.7 tosmabru/slinku'i rules still apply |
+| Names | §4.8: no `la`, `lai`, `doi` inside a name (`volapuk` → `vo la puk`) | `la`, `lai`, `doi` allowed (`volapuk`, `laus`, `tigbalan`) |
+
+The two always change together: there is no way to get one without the
+other. Presets: `MorphOptions::default()` (strict CLL + §4.16, tergenzalvi's
+default), `MorphOptions::settled()` (strict CLL, no §4.16) and
+`MorphOptions::camxes()` (camxes dialect + §4.16); `with_camxes_dialect(bool)`
+sets the switch on any of them. `Engine::Earley` uses
+`morphology::earley_options()`, which is `camxes()`, so it agrees with the
+PEG engine on names and on post-1994 rafsi; `morphology::analyze_with_options`
+and `syntax::parse_with_options` take strict CLL or any other set. The
+switch only decides which words are accepted and how text splits;
+`WordDialect` (next section) stays rule-based on the camxes syllable rules,
+so `volapuk` is a standard cmevla, and a word is never `Obsolete` merely
+because the camxes dialect admitted it. Consonant-only names (below) and
+vowel grouping (§3.5) are the same in both dialects.
+
+```rust
+#[cfg(feature = "earley")]
+{
+    use camxes_rs::morphology::{analyze, analyze_with_options, Engine, MorphOptions};
+
+    // Engine::Earley (camxes dialect): a name with `la`, a lujvo with the
+    // post-CLL rafsi `gam`.
+    assert_eq!(analyze("volapuk", Engine::Earley).unwrap().render(), "volapuk/cmevla");
+    assert_eq!(analyze("gamkemdau", Engine::Earley).unwrap().render(), "gamkemdau/lujvo");
+    // Strict CLL turns off both at once.
+    let strict = MorphOptions::default();
+    assert!(analyze_with_options("volapuk", strict).map_or(true, |m| m.render() != "volapuk/cmevla"));
+    assert!(analyze_with_options("gamkemdau", strict).map_or(true, |m| m.render() != "gamkemdau/lujvo"));
 }
 ```
 
@@ -355,8 +399,8 @@ or `RUST_LOG=debug cargo run --example cmaxes-test`.
   with its delimiter stack (PUSH and POP-EQ rules in the same rule body); the
   Earley engine cuts `zoi`/`la'o` quotes out before lexing, closing at the
   first word equal to the delimiter.
-* **Word types:** on the dictionary corpus the engines disagree on 262 of
-  the 31,220 PEG-accepted headwords; each is a documented camxes/CLL
+* **Word types:** on the dictionary corpus the engines disagree on 230 of
+  the 31,218 PEG-accepted headwords; each is a documented camxes/CLL
   difference (next section).
 * **Trees:** the PEG tree uses camxes rule names, the Earley tree CLL
   Chapter 21 rule names; they are not comparable. The parity test compares
@@ -387,20 +431,30 @@ silent. Where they disagree, the Earley engine is not changed to match
 camxes. Each row of `tests/data/known-differences.tsv` has one of the
 categories below (the same reasons as `DIFFERENCE_CATEGORIES` in
 `tests/dictionary_corpus.rs`). Counts are PEG-accepted dictionary headwords
-(262 in total).
+(230 in total).
 
 | Category (count) | Kind | Examples (PEG → Earley) | CLL |
 |---|---|---|---|
-| `medial-pair` (3) | camxes bug | `ciztolnei`, `refgau`, `vamzma`: lujvo → rejected | §3.7: a pair must not mix voiced and unvoiced consonants (`zt`, `fg`), and "the specific pairs cx, kx, xc, xk, and mz are forbidden" |
+| `medial-pair` (1) | camxes bug | `vamzma`: lujvo → rejected | §3.7: "the specific pairs cx, kx, xc, xk, and mz are forbidden"; the camxes morphology grammar does not check `mz` (the voicing clashes `zt`, `fg` of `ciztolnei`, `refgau` are now rejected by both engines, see below) |
 | `hesitation` (2) | CLL rule | `y` → rejected; `yyy`: `y` + `yy` → rejected | §19.14: `.y.` "differs from [English uh] in the requirement for pauses before and after" |
 | `vowel-initial-pause` (1) | camxes bug | `aierne`: `a` + `ierne` → one fu'ivla `aierne` | §4.9 rule 3: a word beginning with a vowel must be preceded by a pause, so `a` + `ierne` is not a valid split |
-| `comma` (7) | accepted difference | `lijdrba'a,i`: `lijdrba'a` + `i` → one fu'ivla; `OTa,uas`, `bodga,ias`, `nu,IORK`, `tai,UAN`, `xali,uyd`: split → one name; `klanrniut,ni` → rejected | §3.3: a comma marks a syllable break, not a word boundary ("a comma must be used to indicate a different vowel grouping", §3.4) |
-| `name-la` (8) | CLL rule | `lat`, `laus`, `lauDZIS`, `katajinadelazariRAdek`, `kuualalumpur` → rejected; `volapuk` → `vo la puk`; `tigbalan` → `tigba la n`; `doitclan` → `doi tclan` | §4.8: names must not contain `la`, `lai` or `doi` (unless preceded by a consonant) |
-| `consonant-name` (5) | camxes extension | `t`, `xm`, `ng bu`, `b zei p zei f zei k`, `l zei l zei g` → rejected | CLL has no consonant-only names: §4.8 names are syllabic words; camxes `zifcme` allows them for lerfu |
-| `vowel-grouping` (30) | CLL rule | `blaia`, `gruue`, `jdaio`, `sriuu`, `iuctcouo`, `tsauai` → rejected | §3.4: on-glides occur only in stand-alone words and names; other vowel groupings need an apostrophe or comma ("all vowel pairs are allowed with an apostrophe") |
-| `fuhivla-cluster` (15) | CLL rule | `ku'aidzi`, `nijnanidouaga`, `fau'arma`, `mla'aiana` → rejected | §4.7 rule 1: a fu'ivla "must contain a consonant cluster in the first five letters of the word" |
+| `comma` (7) | accepted difference | `lijdrba'a,i`: `lijdrba'a` + `i` → one fu'ivla; `OTa,uas`, `bodga,ias`, `nu,IORK`, `tai,UAN`, `xali,uyd`: split → one name; `klanrniut,ni` → rejected | §3.3: a comma marks a syllable break, not a word boundary (§3.5: "In order to indicate a different grouping, the comma must always be used") |
+| `vowel-grouping` (15) | CLL rule | `proteuu`, `gleua`, `paxtoua`, `nijnanidouaga`, `iuctcouo` → rejected | §3.5: vowels "pair … from the left into syllables" (Example 3.6: the diphthong ei followed by the vowel i), and "In order to indicate a different grouping, the comma must always be used". Here the left grouping starts with `eu` or `ou`, which are not §3.4 diphthongs; two vowels that are not a diphthong form a two-syllable pair only "with the apostrophe separating them" (§3.5). Runs that do group from the left (`blaia` = `blai·a`, `gruue`, `tsauai`, `gondiii'i`) are accepted as fu'ivla by both engines |
+| `fuhivla-cluster` (13) | CLL rule (kept) | `ku'aidzi`, `fau'arma`, `ri'oirkai`, `xai'otso` → rejected | §4.7 rule 1: every fu'ivla "must contain a consonant cluster in the first five letters of the word". The apostrophe is not a consonant (§3.6) and fu'ivla cannot contain `y` (rule 4), so in `ku'aidzi` the first five letters are `k u ' a i` and the only cluster, `dz`, is at letters 6–7: not a fu'ivla. camxes accepts a cluster anywhere; this stays a documented difference |
 | `hyphen-not-required` (20) | CLL rule | `geirzdi`, `toirsti`, `selda'ergau`, `relpi'irna'u`: lujvo → fu'ivla | §4.6: "It is illegal to add a hyphen at a place that is not required by this algorithm"; an r/n-hyphen follows only a CVV rafsi that needs it |
-| `non-cll-rafsi` (171) | CLL rule | `afxanyru'u` → `afxa ny ru'u`; `pedy'utka`, `eiksyselrirni`, `ernyjoibrito` → rejected; `bemymantodi` → `bemymanto di`; `cimnyterjuntasucyxe'idaiseldi'e` → two lujvo; `kexmairybau` → `kexmai ry bau` | §4.5 rafsi forms (CVC, CCV, CVV/CV'V with the diphthongs ai/ei/oi/au, 4-letter + `y`, the 5-letter rafsi "used only at the end of a lujvo"); a camxes lujvo built from other pieces (vowel-initial pieces, CV'V + `y`, `y'`, CVCV finals, …) is not a lujvo, and by §4.6/§4.7 the Earley engine rejects it or reads the words it falls apart into |
+| `n-hyphen` (2) | CLL rule | `zeingamyba'o` → `zeinga my ba'o`; `zeingamyfamba'o` → `zeinga my famba'o` | §4.6: an `n` hyphen is used only before `r`; `zei-n-gam-y-…` would need an `r` hyphen (the only two words whose pieces all have §4.5 rafsi shapes) |
+| `rafsi-vowel-initial` (98) | CLL rule | `afxanyru'u` → `afxa ny ru'u`; `.eiksyselrirni`, `ernyjoibrito` → rejected; `abniienybau` → `abniie ny bau` | §4.5: every rafsi form begins with a consonant (CVC, CVV, CCV, CVCCy, CCVCy, CVCCV, CCVCV), so a piece starting with a vowel (or after `y'`) is not a rafsi |
+| `y-after-vowel` (16) | CLL rule | `baxmasi'ygu'e` → `baxma si'y gu'e`; `berlaua'ygu'e` → rejected | §4.6: the `y` hyphen follows only a consonant-final (4-letter) rafsi; a CVV/CV'V rafsi takes `r`/`n` or nothing |
+| `rafsi-shape` (55) | CLL rule | `bemymantodi` → `bemymanto di`; `cimnyterjuntasucyxe'idaiseldi'e` → two lujvo; `dutyku'arka` → `du ty ku'arka`; `faursygu'e` → rejected | §4.5: the only rafsi shapes are CVC, CCV, CVV/CV'V, 4-letter + `y` and the 5-letter form "used only at the end of a lujvo"; camxes also builds lujvo from longer stems + `y`, CVCV/CCVV finals, medial 5-letter forms and 4-letter forms without `y` |
+
+None of these is a gap in the rafsi list: in the camxes dialect
+(`Engine::Earley`) any lujvo whose pieces have §4.5 rafsi shapes is
+accepted, and every word above fails one of the cited shape or hyphen rules.
+The former `name-la` (8: `volapuk`, `laus`, …) and `consonant-name` (5: `t`,
+`xm`, `ng bu`, …) categories are gone: `Engine::Earley` uses the camxes
+dialect (names may contain `la`) and accepts consonant-only names whose clusters are
+permissible (CLL §3.7). The camxes morphology grammar now rejects medial
+voicing clashes (`ciztolnei`, `refgau`), so both engines reject those two.
 
 The other direction: 174 dictionary headwords are accepted only by the
 Earley engine. They are the older CLL dialect ("obsolete" words such as
@@ -408,9 +462,8 @@ Earley engine. They are the older CLL dialect ("obsolete" words such as
 `WordDialect::Obsolete` by rule (see Standard vs obsolete words).
 
 **Whole texts (dwe corpus).** On the 1,699-text `dwe` comparison corpus
-the PEG engine accepts 1,678 texts and the Earley engine 1,674 (all of them
-also PEG-accepted); morphology agrees on all 1,694 distinct words both
-engines analyse. The four texts only the PEG engine accepts (reported, not
+the PEG engine accepts 1,678 texts and the Earley engine 1,676 (all of them
+also PEG-accepted). The two texts only the PEG engine accepts (reported, not
 fixed):
 
 * `ti marce ge le se vecnu na'o ku gi le remna ca'a ku` — Earley: "no CLL
@@ -420,9 +473,9 @@ fixed):
 * `zo co'oi poi do pu cusku cu ranxi le ka se smuni zo coi vau le ka se smuni zo co'o`
   — Earley: `cmavo "co'oi" not in lexicon`. `co'oi` is not in the CLL cmavo
   table (`cmavo_selmaho.tsv`); camxes accepts any cmavo-shaped word.
-* `zoi ry.д.ry. lerfu le rusko zo d` and `zoi cy.(x+15&~15).cy. mekso le
-  bangu poi du la c` — Earley: `morph rejected "d"` / `"c"`: consonant-only
-  names (`consonant-name` above).
+
+The texts ending in `zo d` and `la c` are now accepted by both engines
+(consonant-only names, CLL §3.7).
 
 ## Performance
 
@@ -431,28 +484,30 @@ lensisku headwords with `examples/morphology_corpus.rs`:
 
 | Workload | PEG | Earley (CLL pipeline) |
 |----------|-----|--------|
-| `morphology::analyze`, all headwords | 1,192 words/s | 285 words/s |
-| bare word recogniser (`--raw`: camxes grammar / `cll::constraints::morph_parse`) | 1,355 inputs/s | 366 inputs/s |
+| `morphology::analyze`, all headwords | 1,089 words/s | 214 words/s |
+| bare word recogniser (`--raw`: camxes grammar / `cll::constraints::morph_parse`) | 1,158 inputs/s | 266 inputs/s |
 
 Whole-text syntax (`cargo bench --features earley`; the Earley numbers are
 warm-cache: the CLL word analysis is cached per thread):
 
 | Benchmark | PEG | Earley |
 |-----------|-----|--------|
-| grammar startup (`Peg::new(LOJBAN_GRAMMAR)` / `compile_ebnf(cll21.ebnf)`) | 192 ms | 0.75 ms |
-| `mi prami do` (11 bytes) | 4.5 ms | 0.47 ms |
-| `mi prami do .i do prami mi ` × 20 (540 bytes) | 101 ms | 0.57 ms |
-| 1,699 example sentences (`dwe` corpus, `syntax::parse`, cold cache) | 52 rows/s | 440 rows/s |
+| grammar startup (`Peg::new(LOJBAN_GRAMMAR)` / `compile_ebnf(cll21.ebnf)`) | 222 ms | 0.86 ms |
+| `mi prami do` (11 bytes) | 4.5 ms | 0.48 ms |
+| `mi prami do .i do prami mi ` × 20 (540 bytes) | 104 ms | 0.59 ms |
+| 1,699 example sentences (`dwe` corpus, `syntax::parse`, cold cache) | 62 rows/s | 460 rows/s |
 
 Compile a grammar once and reuse it (`syntax` caches both). The slowest
 headwords for the CLL pipeline are long camxes lujvo that the CLL rules
-break up (up to 2.5 s, e.g. `reltranyselcy'anmona'yborbi'okemyji'eslerango`)
-and very long cmavo clusters (0.5 s). Numbers vary with machine load.
+break up (up to 3.5 s, e.g. `reltranyselcy'anmona'yborbi'okemyji'eslerango`)
+and very long cmavo clusters (0.5 s). Numbers vary with machine load: the previous version of this table (285
+words/s) measured 214 words/s when rerun back to back with the current code
+(214–217 words/s), so the differences are machine speed, not code.
 
-Results: PEG accepts 31,220 headwords, Earley 31,213; the engines agree on
-word split and class on 30,958, the other 262 PEG-accepted headwords are the
+Results: PEG accepts 31,218 headwords, Earley 31,241; the engines agree on
+word split and class on 30,988, the other 230 PEG-accepted headwords are the
 documented known differences; 174 headwords are accepted only by Earley
-(obsolete CLL forms) and 20 by neither.
+(obsolete CLL forms) and 22 by neither.
 
 ## License
 

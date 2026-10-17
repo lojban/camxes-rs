@@ -82,8 +82,19 @@ pub fn parse(input: &str, engine: Engine) -> Result<Vec<ParseNode>, SyntaxError>
         #[cfg(feature = "peg")]
         Engine::Peg => peg_parse(input),
         #[cfg(feature = "earley")]
-        Engine::Earley => cll_parse(input),
+        Engine::Earley => parse_with_options(input, crate::morphology::earley_options()),
     }
+}
+
+/// Earley-engine parse with explicit CLL pipeline options (dialect), e.g.
+/// `MorphOptions::default()` for strict CLL morphology. `Engine::Earley`
+/// uses [`crate::morphology::earley_options`].
+#[cfg(feature = "earley")]
+pub fn parse_with_options(
+    input: &str,
+    options: crate::morphology::MorphOptions,
+) -> Result<Vec<ParseNode>, SyntaxError> {
+    crate::cll::constraints::with_options(options, || cll_parse(input))
 }
 
 #[cfg(feature = "peg")]

@@ -387,7 +387,7 @@ avju	fu'ivla	avju/fu'ivla	ok	ok	Cll	standard	ok
 axlte	fu'ivla	axlte/fu'ivla	ok	ok	Cll	standard	ok
 azarbaiDJAN	cmevla	azarbaiDJAN/cmevla	ok	ok	Cll	standard	ok
 azvangi	fu'ivla	azvangi/fu'ivla	ok	ok	Cll	standard	ok
-b zei p zei f zei k	zei-lujvo	b/cmevla zei/cmavo:ZEI p/cmevla zei/cmavo:ZEI f/cmevla zei/cmavo:ZEI k/cmevla	ok	reject	-	-	-
+b zei p zei f zei k	zei-lujvo	b/cmevla zei/cmavo:ZEI p/cmevla zei/cmavo:ZEI f/cmevla zei/cmavo:ZEI k/cmevla	ok	ok	Cll	standard	ok
 ba	cmavo	ba/cmavo:PU	ok	ok	Cll	standard	ok
 ba'a	cmavo	ba'a/cmavo:UI	ok	ok	Cll	standard	ok
 ba'acu'i	cmavo-compound	ba'a/cmavo:UI cu'i/cmavo:CAI	ok	ok	Cll	standard	ok
@@ -8833,7 +8833,7 @@ blacykabri	lujvo	blacykabri/lujvo	ok	ok	Cll	standard	ok
 bladei	lujvo	bladei/lujvo	ok	ok	Cll	standard	ok
 bladembi	lujvo	bladembi/lujvo	ok	ok	Cll	standard	ok
 blaglo'ongo	fu'ivla	blaglo'ongo/fu'ivla	ok	ok	Cll	standard	ok
-blaia	fu'ivla	blaia/fu'ivla	ok	reject	-	-	-
+blaia	fu'ivla	blaia/fu'ivla	ok	ok	Cll	standard	ok
 blaiasapida	fu'ivla	blaiasapida/fu'ivla	ok	ok	Cll	standard	ok
 blaisapida	fu'ivla	blaisapida/fu'ivla	ok	ok	Cll	standard	ok
 blajba	lujvo	blajba/lujvo	ok	ok	Cll	standard	ok
@@ -9131,7 +9131,7 @@ bridi	gismu	bridi/gismu	ok	ok	Cll	standard	ok
 brididu	fu'ivla	brididu/fu'ivla	ok	ok	Cll	standard	ok
 brife	gismu	brife/gismu	ok	ok	Cll	standard	ok
 briga'e	lujvo	briga'e/lujvo	ok	ok	Cll	standard	ok
-briii	fu'ivla	briii/fu'ivla	ok	reject	-	-	-
+briii	fu'ivla	briii/fu'ivla	ok	ok	Cll	standard	ok
 brije'u	lujvo	brije'u/lujvo	ok	ok	Cll	standard	ok
 brije'uju'o	lujvo	brije'uju'o/lujvo	ok	ok	Cll	standard	ok
 briju	gismu	briju/gismu	ok	ok	Cll	standard	ok
@@ -10118,7 +10118,7 @@ cizmau	lujvo	cizmau/lujvo	ok	ok	Cll	standard	ok
 cizme'a	lujvo	cizme'a/lujvo	ok	ok	Cll	standard	ok
 cizra	gismu	cizra/gismu	ok	ok	Cll	standard	ok
 cizrkafka	fu'ivla	cizrkafka/fu'ivla	ok	ok	Cll	standard	ok
-ciztolnei	nalvla	ciztolnei/lujvo	ok	reject	-	-	-
+ciztolnei	nalvla	-	reject	reject	-	-	-
 cizyselji'u	lujvo	cizyselji'u/lujvo	ok	ok	Cll	standard	ok
 cizytolnei	lujvo	cizytolnei/lujvo	ok	ok	Cll	standard	ok
 ckabo'o	lujvo	ckabo'o/lujvo	ok	ok	Cll	standard	ok
@@ -10303,7 +10303,7 @@ cmagdaleini	fu'ivla	cmagdaleini/fu'ivla	ok	ok	Cll	standard	ok
 cmagnitude	fu'ivla	cmagnitude/fu'ivla	ok	ok	Cll	standard	ok
 cmagu'e	lujvo	cmagu'e/lujvo	ok	ok	Cll	standard	ok
 cmagu'etru	lujvo	cmagu'etru/lujvo	ok	ok	Cll	standard	ok
-cmaiueiorze'aiuei	fu'ivla	cmaiueiorze'aiuei/fu'ivla	ok	reject	-	-	-
+cmaiueiorze'aiuei	fu'ivla	cmaiueiorze'aiuei/fu'ivla	ok	ok	Cll	standard	ok
 cmajamblo	lujvo	cmajamblo/lujvo	ok	ok	Cll	standard	ok
 cmajdikygau	lujvo	cmajdikygau/lujvo	ok	ok	Cll	standard	ok
 cmakarzga	lujvo	cmakarzga/lujvo	ok	ok	Cll	standard	ok
@@ -11866,7 +11866,7 @@ doi'u	experimental cmavo	doi'u/cmavo	ok	ok	Cll	standard	ok
 doido'u	cmavo-compound	doi/cmavo:DOI do'u/cmavo:DOhU	ok	ok	Cll	standard	ok
 doima	cmavo-compound	doi/cmavo:DOI ma/cmavo:KOhA	ok	ok	Cll	standard	ok
 doinai	cmavo-compound	doi/cmavo:DOI nai/cmavo:NAI	ok	ok	Cll	standard	ok
-doitclan	cmevla	doitclan/cmevla	ok	differs	Cll	standard	ok
+doitclan	cmevla	doitclan/cmevla	ok	ok	Cll	standard	ok
 dokcu	experimental gismu	dokcu/gismu	ok	ok	Cll	standard	ok
 dolmeni	fu'ivla	dolmeni/fu'ivla	ok	ok	Cll	standard	ok
 dolna	experimental gismu	dolna/gismu	ok	ok	Cll	standard	ok
@@ -13581,7 +13581,7 @@ gonai	cmavo-compound	go/cmavo:GA nai/cmavo:NAI	ok	ok	Cll	standard	ok
 gondana	fu'ivla	gondana/fu'ivla	ok	ok	Cll	standard	ok
 gondavana	fu'ivla	gondavana/fu'ivla	ok	ok	Cll	standard	ok
 gondii'i	obsolete fu'ivla	gondii'i/fu'ivla+obsolete	reject	ok	Cll	obsolete	ok
-gondiii'i	fu'ivla	gondiii'i/fu'ivla	ok	reject	-	-	-
+gondiii'i	fu'ivla	gondiii'i/fu'ivla	ok	ok	Cll	standard	ok
 gonduana	obsolete fu'ivla	gonduana/fu'ivla+obsolete	reject	ok	Cll	obsolete	ok
 gondunu	fu'ivla	gondunu/fu'ivla	ok	ok	Cll	standard	ok
 gondunubau	fu'ivla	gondunubau/fu'ivla	ok	ok	Cll	standard	ok
@@ -13680,7 +13680,7 @@ grutrkiui	fu'ivla	grutrkiui/fu'ivla	ok	ok	Cll	standard	ok
 grutrmiristika	fu'ivla	grutrmiristika/fu'ivla	ok	ok	Cll	standard	ok
 grutrsitrsensi	fu'ivla	grutrsitrsensi/fu'ivla	ok	ok	Cll	standard	ok
 grutrxananase	fu'ivla	grutrxananase/fu'ivla	ok	ok	Cll	standard	ok
-gruue	fu'ivla	gruue/fu'ivla	ok	reject	-	-	-
+gruue	fu'ivla	gruue/fu'ivla	ok	ok	Cll	standard	ok
 gruxre	lujvo	gruxre/lujvo	ok	ok	Cll	standard	ok
 gruxruba	lujvo	gruxruba/lujvo	ok	ok	Cll	standard	ok
 gu	cmavo	gu/cmavo:GA	ok	ok	Cll	standard	ok
@@ -14742,8 +14742,8 @@ jbogimkra	lujvo	jbogimkra/lujvo	ok	ok	Cll	standard	ok
 jbogri	lujvo	jbogri/lujvo	ok	ok	Cll	standard	ok
 jbogu'a	lujvo	jbogu'a/lujvo	ok	ok	Cll	standard	ok
 jbogu'e	lujvo	jbogu'e/lujvo	ok	ok	Cll	standard	ok
-jboia	fu'ivla	jboia/fu'ivla	ok	reject	-	-	-
-jboiu	fu'ivla	jboiu/fu'ivla	ok	reject	-	-	-
+jboia	fu'ivla	jboia/fu'ivla	ok	ok	Cll	standard	ok
+jboiu	fu'ivla	jboiu/fu'ivla	ok	ok	Cll	standard	ok
 jbojevysofkemsuzgugje'ake'eborkemfaipaltrusi'oke'ekemgubyseltru	lujvo	jbojevysofkemsuzgugje'ake'eborkemfaipaltrusi'oke'ekemgubyseltru/lujvo	ok	ok	Cll	standard	ok
 jbojikca	lujvo	jbojikca/lujvo	ok	ok	Cll	standard	ok
 jboju'i	lujvo	jboju'i/lujvo	ok	ok	Cll	standard	ok
@@ -14810,7 +14810,7 @@ jdacuvgau	lujvo	jdacuvgau/lujvo	ok	ok	Cll	standard	ok
 jdadapma	lujvo	jdadapma/lujvo	ok	ok	Cll	standard	ok
 jdailu	fu'ivla	jdailu/fu'ivla	ok	ok	Cll	standard	ok
 jdainla	fu'ivla	jdainla/fu'ivla	ok	ok	Cll	standard	ok
-jdaio	fu'ivla	jdaio/fu'ivla	ok	reject	-	-	-
+jdaio	fu'ivla	jdaio/fu'ivla	ok	ok	Cll	standard	ok
 jdaja'a	lujvo	jdaja'a/lujvo	ok	ok	Cll	standard	ok
 jdajgu	lujvo	jdajgu/lujvo	ok	ok	Cll	standard	ok
 jdajinru	lujvo	jdajinru/lujvo	ok	ok	Cll	standard	ok
@@ -15331,7 +15331,7 @@ jmadegycalku	lujvo	jmadegycalku/lujvo	ok	ok	Cll	standard	ok
 jmafuto	fu'ivla	jmafuto/fu'ivla	ok	ok	Cll	standard	ok
 jmagle	lujvo	jmagle/lujvo	ok	ok	Cll	standard	ok
 jmagutci	lujvo	jmagutci/lujvo	ok	ok	Cll	standard	ok
-jmaia	fu'ivla	jmaia/fu'ivla	ok	reject	-	-	-
+jmaia	fu'ivla	jmaia/fu'ivla	ok	ok	Cll	standard	ok
 jmaiko	fu'ivla	jmaiko/fu'ivla	ok	ok	Cll	standard	ok
 jmaikyxrebau	lujvo	jmaikyxrebau/lujvo	ok	ok	Cll	standard	ok
 jmaja'u	lujvo	jmaja'u/lujvo	ok	ok	Cll	standard	ok
@@ -16063,7 +16063,7 @@ kasygau	lujvo	kasygau/lujvo	ok	ok	Cll	standard	ok
 kasygri	lujvo	kasygri/lujvo	ok	ok	Cll	standard	ok
 kasystu	lujvo	kasystu/lujvo	ok	ok	Cll	standard	ok
 kasysu'a	lujvo	kasysu'a/lujvo	ok	ok	Cll	standard	ok
-katajinadelazariRAdek	cmevla	katajinadelazariRAdek/cmevla	ok	reject	-	-	-
+katajinadelazariRAdek	cmevla	katajinadelazariRAdek/cmevla	ok	ok	Cll	standard	ok
 katajinas	cmevla	katajinas/cmevla	ok	ok	Cll	standard	ok
 katci	experimental gismu	katci/gismu	ok	ok	Cll	standard	ok
 katcitky'utka	lujvo	katcitky'utka/lujvo	ok	reject	-	-	-
@@ -17006,7 +17006,7 @@ kutysetmima	lujvo	kutysetmima/lujvo	ok	differs	Cll	standard	ok
 kutytu'a	lujvo	kutytu'a/lujvo	ok	ok	Cll	standard	ok
 kutyuenzi	lujvo	kutyuenzi/lujvo	ok	reject	-	-	-
 kutyzgimi'i	lujvo	kutyzgimi'i/lujvo	ok	ok	Cll	standard	ok
-kuualalumpur	cmevla	kuualalumpur/cmevla	ok	reject	-	-	-
+kuualalumpur	cmevla	kuualalumpur/cmevla	ok	ok	Cll	standard	ok
 kuzycmi	lujvo	kuzycmi/lujvo	ok	ok	Cll	standard	ok
 ky	cmavo	ky/cmavo:BY	ok	ok	Cll	standard	ok
 ky zei sance	zei-lujvo	ky/cmavo:BY zei/cmavo:ZEI sance/gismu	ok	ok	Cll	standard	ok
@@ -17019,7 +17019,7 @@ kybu	bu-letteral	ky/cmavo:BY bu/cmavo:BU	ok	ok	Cll	standard	ok
 kylombys	cmevla	kylombys/cmevla	ok	ok	Cll	standard	ok
 kyrym	cmevla	kyrym/cmevla	ok	ok	Cll	standard	ok
 kyuiz zei cipra	zei-lujvo	kyuiz/cmevla zei/cmavo:ZEI cipra/gismu	ok	ok	Cll	standard	ok
-l zei l zei g	zei-lujvo	l/cmevla zei/cmavo:ZEI l/cmevla zei/cmavo:ZEI g/cmevla	ok	reject	-	-	-
+l zei l zei g	zei-lujvo	l/cmevla zei/cmavo:ZEI l/cmevla zei/cmavo:ZEI g/cmevla	ok	ok	Cll	standard	ok
 la	cmavo	la/cmavo:LA	ok	ok	Cll	standard	ok
 la dontu'u	cmavo-compound	la/cmavo:LA dontu'u/lujvo	ok	ok	Cll	standard	ok
 la kesri'e	phrase	la/cmavo:LA kesri'e/lujvo	ok	ok	Cll	standard	ok
@@ -17223,7 +17223,7 @@ lastu	gismu	lastu/gismu	ok	ok	Cll	standard	ok
 lasybo'i	lujvo	lasybo'i/lujvo	ok	ok	Cll	standard	ok
 lasydakli	lujvo	lasydakli/lujvo	ok	ok	Cll	standard	ok
 lasysilka	lujvo	lasysilka/lujvo	ok	ok	Cll	standard	ok
-lat	cmevla	lat/cmevla	ok	reject	-	-	-
+lat	cmevla	lat/cmevla	ok	ok	Cll	standard	ok
 latci	experimental gismu	latci/gismu	ok	ok	Cll	standard	ok
 latcmo	lujvo	latcmo/lujvo	ok	ok	Cll	standard	ok
 latcragama	fu'ivla	latcragama/fu'ivla	ok	ok	Cll	standard	ok
@@ -17261,7 +17261,7 @@ lau'au	experimental cmavo	lau'au/cmavo	ok	ok	Cll	standard	ok
 lau'e	experimental cmavo	lau'e/cmavo	ok	ok	Cll	standard	ok
 lau'imsa	fu'ivla	lau'imsa/fu'ivla	ok	reject	-	-	-
 lau'u	experimental cmavo	lau'u/cmavo	ok	ok	Cll	standard	ok
-lauDZIS	cmevla	lauDZIS/cmevla	ok	reject	-	-	-
+lauDZIS	cmevla	lauDZIS/cmevla	ok	ok	Cll	standard	ok
 lauble	lujvo	lauble/lujvo	ok	ok	Cll	standard	ok
 laucmo	lujvo	laucmo/lujvo	ok	ok	Cll	standard	ok
 laufso	fu'ivla	laufso/fu'ivla	ok	ok	Cll	standard	ok
@@ -17279,7 +17279,7 @@ laurselylai	lujvo	laurselylai/lujvo	ok	ok	Cll	standard	ok
 laurterbasna	lujvo	laurterbasna/lujvo	ok	ok	Cll	standard	ok
 laurxajmi	lujvo	laurxajmi/lujvo	ok	ok	Cll	standard	ok
 laurxampre	lujvo	laurxampre/lujvo	ok	ok	Cll	standard	ok
-laus	cmevla	laus/cmevla	ok	reject	-	-	-
+laus	cmevla	laus/cmevla	ok	ok	Cll	standard	ok
 lausku	lujvo	lausku/lujvo	ok	ok	Cll	standard	ok
 lautci	lujvo	lautci/lujvo	ok	ok	Cll	standard	ok
 lauzma	lujvo	lauzma/lujvo	ok	ok	Cll	standard	ok
@@ -18569,7 +18569,7 @@ mivyxu'i	lujvo	mivyxu'i/lujvo	ok	ok	Cll	standard	ok
 mivzu'e	lujvo	mivzu'e/lujvo	ok	ok	Cll	standard	ok
 mixa,IL	cmevla	mixa,IL/cmevla	ok	ok	Cll	standard	ok
 mixre	gismu	mixre/gismu	ok	ok	Cll	standard	ok
-mla'aiana	fu'ivla	mla'aiana/fu'ivla	ok	reject	-	-	-
+mla'aiana	fu'ivla	mla'aiana/fu'ivla	ok	ok	Cll	standard	ok
 mla'ulu	fu'ivla	mla'ulu/fu'ivla	ok	ok	Cll	standard	ok
 mlabimke'a	lujvo	mlabimke'a/lujvo	ok	ok	Cll	standard	ok
 mlacarna	lujvo	mlacarna/lujvo	ok	ok	Cll	standard	ok
@@ -19537,7 +19537,7 @@ nerpalku	lujvo	nerpalku/lujvo	ok	ok	Cll	standard	ok
 nerta'u	lujvo	nerta'u/lujvo	ok	ok	Cll	standard	ok
 nerva'u	lujvo	nerva'u/lujvo	ok	ok	Cll	standard	ok
 neserai	cmavo-compound	ne/cmavo:GOI se/cmavo:SE rai/cmavo:BAI	ok	ok	Cll	standard	ok
-ng bu	bu-letteral	ng/cmevla bu/cmavo:BU	ok	reject	-	-	-
+ng bu	bu-letteral	ng/cmevla bu/cmavo:BU	ok	ok	Cll	standard	ok
 ni	cmavo	ni/cmavo:NU	ok	ok	Cll	standard	ok
 ni bu	bu-letteral	ni/cmavo:NU bu/cmavo:BU	ok	ok	Cll	standard	ok
 ni'a	cmavo	ni'a/cmavo:FAhA	ok	ok	Cll	standard	ok
@@ -20187,7 +20187,7 @@ onga	fu'ivla	onga/fu'ivla	ok	ok	Cll	standard	ok
 ongu	fu'ivla	ongu/fu'ivla	ok	ok	Cll	standard	ok
 onji	fu'ivla	onji/fu'ivla	ok	ok	Cll	standard	ok
 onkle	fu'ivla	onkle/fu'ivla	ok	ok	Cll	standard	ok
-onmatopo'eia	fu'ivla	onmatopo'eia/fu'ivla	ok	reject	-	-	-
+onmatopo'eia	fu'ivla	onmatopo'eia/fu'ivla	ok	ok	Cll	standard	ok
 onsa	fu'ivla	onsa/fu'ivla	ok	ok	Cll	standard	ok
 onskide	fu'ivla	onskide/fu'ivla	ok	ok	Cll	standard	ok
 ontari'o	fu'ivla	ontari'o/fu'ivla	ok	ok	Cll	standard	ok
@@ -21729,7 +21729,7 @@ refcfagau	lujvo	refcfagau/lujvo	ok	ok	Cll	standard	ok
 refcfari'a	lujvo	refcfari'a/lujvo	ok	ok	Cll	standard	ok
 refcpa	lujvo	refcpa/lujvo	ok	ok	Cll	standard	ok
 refcpixa	lujvo	refcpixa/lujvo	ok	ok	Cll	standard	ok
-refgau	lujvo	refgau/lujvo	ok	reject	-	-	-
+refgau	lujvo	-	reject	reject	-	-	-
 refkibycpa	lujvo	refkibycpa/lujvo	ok	ok	Cll	standard	ok
 refkusi	fu'ivla	refkusi/fu'ivla	ok	ok	Cll	standard	ok
 refmri	lujvo	refmri/lujvo	ok	ok	Cll	standard	ok
@@ -26122,7 +26122,7 @@ sriba'axi'a	lujvo	sriba'axi'a/lujvo	ok	ok	Cll	standard	ok
 srimakyvelvei	lujvo	srimakyvelvei/lujvo	ok	ok	Cll	standard	ok
 sriname	fu'ivla	sriname/fu'ivla	ok	ok	Cll	standard	ok
 srito	gismu	srito/gismu	ok	ok	Cll	standard	ok
-sriuu	fu'ivla	sriuu/fu'ivla	ok	reject	-	-	-
+sriuu	fu'ivla	sriuu/fu'ivla	ok	ok	Cll	standard	ok
 srogau	lujvo	srogau/lujvo	ok	ok	Cll	standard	ok
 srokajna	lujvo	srokajna/lujvo	ok	ok	Cll	standard	ok
 sropanka	lujvo	sropanka/lujvo	ok	ok	Cll	standard	ok
@@ -26429,7 +26429,7 @@ sy'a	experimental cmavo	sy'a/cmavo	ok	ok	Cll	standard	ok
 sy'au	experimental cmavo	sy'au/cmavo	ok	ok	Cll	standard	ok
 sy'y	experimental cmavo	sy'y/cmavo	ok	ok	Cll	standard	ok
 syPIR	cmevla	syPIR/cmevla	ok	ok	Cll	standard	ok
-t	cmevla	t/cmevla	ok	reject	-	-	-
+t	cmevla	t/cmevla	ok	ok	Cll	standard	ok
 ta	cmavo	ta/cmavo:KOhA	ok	ok	Cll	standard	ok
 ta'a	cmavo	ta'a/cmavo:COI	ok	ok	Cll	standard	ok
 ta'ai	experimental cmavo	ta'ai/cmavo	ok	ok	Cll	standard	ok
@@ -26895,7 +26895,7 @@ tcitigi	fu'ivla	tcitigi/fu'ivla	ok	ok	Cll	standard	ok
 tcitygau	lujvo	tcitygau/lujvo	ok	ok	Cll	standard	ok
 tcityta'o	lujvo	tcityta'o/lujvo	ok	ok	Cll	standard	ok
 tcityuidje	lujvo	tcityuidje/lujvo	ok	reject	-	-	-
-tciuaua	fu'ivla	tciuaua/fu'ivla	ok	reject	-	-	-
+tciuaua	fu'ivla	tciuaua/fu'ivla	ok	ok	Cll	standard	ok
 tciuiro	fu'ivla	tciuiro/fu'ivla	ok	ok	Cll	standard	ok
 tciveljai	lujvo	tciveljai/lujvo	ok	ok	Cll	standard	ok
 tcivi	experimental gismu	tcivi/gismu	ok	ok	Cll	standard	ok
@@ -27978,7 +27978,7 @@ tifkai	lujvo	tifkai/lujvo	ok	ok	Cll	standard	ok
 tifmu'eza'i	lujvo	tifmu'eza'i/lujvo	ok	ok	Cll	standard	ok
 tifmuza	fu'ivla	tifmuza/fu'ivla	ok	ok	Cll	standard	ok
 tifri	experimental gismu	tifri/gismu	ok	ok	Cll	standard	ok
-tigbalan	cmevla	tigbalan/cmevla	ok	reject	-	-	-
+tigbalan	cmevla	tigbalan/cmevla	ok	ok	Cll	standard	ok
 tigdansu	lujvo	tigdansu/lujvo	ok	ok	Cll	standard	ok
 tigdi'u	lujvo	tigdi'u/lujvo	ok	ok	Cll	standard	ok
 tigni	gismu	tigni/gismu	ok	ok	Cll	standard	ok
@@ -28410,7 +28410,7 @@ tradzo	lujvo	tradzo/lujvo	ok	ok	Cll	standard	ok
 tragulo	fu'ivla	tragulo/fu'ivla	ok	ok	Cll	standard	ok
 trai'i	fu'ivla	trai'i/fu'ivla	ok	ok	Cll	standard	ok
 traide	fu'ivla	traide/fu'ivla	ok	ok	Cll	standard	ok
-traii	fu'ivla	traii/fu'ivla	ok	reject	-	-	-
+traii	fu'ivla	traii/fu'ivla	ok	ok	Cll	standard	ok
 traji	gismu	traji/gismu	ok	ok	Cll	standard	ok
 trajije	fu'ivla	trajije/fu'ivla	ok	ok	Cll	standard	ok
 trajmaumce	fu'ivla	trajmaumce/fu'ivla	ok	ok	Cll	standard	ok
@@ -28562,7 +28562,7 @@ tsasmani	lujvo	tsasmani/lujvo	ok	ok	Cll	standard	ok
 tsatmatatnaxtsa'a	fu'ivla	tsatmatatnaxtsa'a/fu'ivla	ok	ok	Cll	standard	ok
 tsatsa	lujvo	tsatsa/lujvo	ok	ok	Cll	standard	ok
 tsatsu	lujvo	tsatsu/lujvo	ok	ok	Cll	standard	ok
-tsauai	fu'ivla	tsauai/fu'ivla	ok	reject	-	-	-
+tsauai	fu'ivla	tsauai/fu'ivla	ok	ok	Cll	standard	ok
 tsauga	fu'ivla	tsauga/fu'ivla	ok	ok	Cll	standard	ok
 tsautu	fu'ivla	tsautu/fu'ivla	ok	ok	Cll	standard	ok
 tsazezu	fu'ivla	tsazezu/fu'ivla	ok	ok	Cll	standard	ok
@@ -29662,7 +29662,7 @@ vlinyselkau	lujvo	vlinyselkau/lujvo	ok	ok	Cll	standard	ok
 vlipa	gismu	vlipa/gismu	ok	ok	Cll	standard	ok
 vliraitru	lujvo	vliraitru/lujvo	ok	ok	Cll	standard	ok
 vlixlu	lujvo	vlixlu/lujvo	ok	ok	Cll	standard	ok
-vluuo	fu'ivla	vluuo/fu'ivla	ok	reject	-	-	-
+vluuo	fu'ivla	vluuo/fu'ivla	ok	ok	Cll	standard	ok
 vo	cmavo	vo/cmavo:PA	ok	ok	Cll	standard	ok
 vo zei sumtika	zei-lujvo	vo/cmavo:PA zei/cmavo:ZEI sumtika/fu'ivla	ok	ok	Cll	standard	ok
 vo zei zgabube	zei-lujvo	vo/cmavo:PA zei/cmavo:ZEI zgabube/fu'ivla	ok	ok	Cll	standard	ok
@@ -29728,7 +29728,7 @@ vokta'a	lujvo	vokta'a/lujvo	ok	ok	Cll	standard	ok
 vokterplo	lujvo	vokterplo/lujvo	ok	ok	Cll	standard	ok
 vokygenkantu	lujvo	vokygenkantu/lujvo	ok	ok	Cll	standard	ok
 vokygenske	lujvo	vokygenske/lujvo	ok	ok	Cll	standard	ok
-volapuk	cmevla	volapuk/cmevla	ok	differs	Cll	standard	ok
+volapuk	cmevla	volapuk/cmevla	ok	ok	Cll	standard	ok
 volbifce	lujvo	volbifce/lujvo	ok	ok	Cll	standard	ok
 volbolo	fu'ivla	volbolo/fu'ivla	ok	ok	Cll	standard	ok
 volcukla	lujvo	volcukla/lujvo	ok	ok	Cll	standard	ok
@@ -30474,7 +30474,7 @@ xlura	gismu	xlura/gismu	ok	ok	Cll	standard	ok
 xlusku	lujvo	xlusku/lujvo	ok	ok	Cll	standard	ok
 xlutci	lujvo	xlutci/lujvo	ok	ok	Cll	standard	ok
 xluzerma'esazri	lujvo	xluzerma'esazri/lujvo	ok	ok	Cll	standard	ok
-xm	cmevla	xm/cmevla	ok	reject	-	-	-
+xm	cmevla	xm/cmevla	ok	ok	Cll	standard	ok
 xo	cmavo	xo/cmavo:PA	ok	ok	Cll	standard	ok
 xo'a	experimental cmavo	xo'a/cmavo	ok	ok	Cll	standard	ok
 xo'ai	experimental cmavo	xo'ai/cmavo	ok	ok	Cll	standard	ok
@@ -30574,7 +30574,7 @@ xrudja	lujvo	xrudja/lujvo	ok	ok	Cll	standard	ok
 xrududu	fu'ivla	xrududu/fu'ivla	ok	ok	Cll	standard	ok
 xrufle	lujvo	xrufle/lujvo	ok	ok	Cll	standard	ok
 xrugau	lujvo	xrugau/lujvo	ok	ok	Cll	standard	ok
-xruii	fu'ivla	xruii/fu'ivla	ok	reject	-	-	-
+xruii	fu'ivla	xruii/fu'ivla	ok	ok	Cll	standard	ok
 xrujendu	lujvo	xrujendu/lujvo	ok	ok	Cll	standard	ok
 xruki	gismu	xruki/gismu	ok	ok	Cll	standard	ok
 xrukla	lujvo	xrukla/lujvo	ok	ok	Cll	standard	ok

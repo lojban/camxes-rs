@@ -249,6 +249,47 @@ pub fn build_morph_grammar() -> Grammar {
         ],
     );
     grammar_builder.prod(nucleus_brivla, vec![Symbol::Nt(vowel_run_nt)]);
+    // General left-grouped vowel runs (§3.5): within an apostrophe-free
+    // stretch the vowels pair from the left, so a stretch is a sequence of
+    // diphthongs optionally ending in one vowel (`ai|a`, `uu|e`, `iu|au|a`).
+    // A non-diphthong adjacent pair (`eu`, `ea`) has no reading here: it needs
+    // a comma or an apostrophe ("In order to indicate a different grouping,
+    // the comma must always be used"). Which diphthongs a word class may use
+    // (§3.4) is unchanged: this nucleus is only used by fu'ivla, where
+    // on-glides are allowed ("borrowings").
+    let vowel_stretch_nt = grammar_builder.nt("VowelStretch");
+    grammar_builder.prod(vowel_stretch_nt, vec![Symbol::Nt(vowel_nt)]);
+    grammar_builder.prod(vowel_stretch_nt, vec![Symbol::Nt(diphthong_nt)]);
+    grammar_builder.prod(
+        vowel_stretch_nt,
+        vec![Symbol::Nt(diphthong_nt), Symbol::Nt(vowel_stretch_nt)],
+    );
+    let vowel_group_run_nt = grammar_builder.nt("VowelGroupRun");
+    grammar_builder.prod(vowel_group_run_nt, vec![Symbol::Nt(vowel_stretch_nt)]);
+    grammar_builder.prod(
+        vowel_group_run_nt,
+        vec![
+            Symbol::Nt(vowel_stretch_nt),
+            Symbol::Nt(apostrophe_nt),
+            Symbol::Nt(vowel_group_run_nt),
+        ],
+    );
+    grammar_builder.prod(nucleus_brivla, vec![Symbol::Nt(vowel_group_run_nt)]);
+    // A run of at least two syllables, so that it can be a fu'ivla's only
+    // vowel group (`blaia` = `blai|a`).
+    let vowel_run_multi_nt = grammar_builder.nt("VowelRunMulti");
+    grammar_builder.prod(
+        vowel_run_multi_nt,
+        vec![Symbol::Nt(diphthong_nt), Symbol::Nt(vowel_stretch_nt)],
+    );
+    grammar_builder.prod(
+        vowel_run_multi_nt,
+        vec![
+            Symbol::Nt(vowel_stretch_nt),
+            Symbol::Nt(apostrophe_nt),
+            Symbol::Nt(vowel_group_run_nt),
+        ],
+    );
     // Apostrophe chains `N'N'N…` of vowels and off-glide diphthongs inside
     // brivla (`banbu'a'a`, `krai'a`). CLL §3.4: "all vowel pairs are allowed
     // with an apostrophe between them"; nothing in §4 limits the length.
@@ -762,6 +803,13 @@ pub fn build_morph_grammar() -> Grammar {
     // `ska'ai`): §4.7 asks only for a brivla shape with a cluster in the
     // first five letters; §3.4 allows any vowel pair across an apostrophe.
     grammar_builder.prod(fuhivla, vec![Symbol::Nt(f_onset), Symbol::Nt(brivla_chain)]);
+    // A fu'ivla whose only vowels are one left-grouped run of two or more
+    // syllables (`blaia` = `blai|a`, `gruue` = `gruu|e`, `tsauai` =
+    // `tsau|ai`); §3.5 vowel grouping, §4.7 rules 1–5 otherwise unchanged.
+    grammar_builder.prod(
+        fuhivla,
+        vec![Symbol::Nt(f_onset), Symbol::Nt(vowel_run_multi_nt)],
+    );
 
     // --- cmevla §4.8 ---
     // Consonant-final; pairs medial-OK (enforced by phonotactics filter);

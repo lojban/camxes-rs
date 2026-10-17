@@ -185,7 +185,15 @@ pub fn check_lujvo(norm: &str) -> Result<Vec<String>, (ConstraintId, String)> {
     }
 
     let lex = RafsiLexicon::global();
-    let segs = lex.segment_lujvo_by_form(body);
+    let segs = super::lujvo_segmentations(body);
+    if segs.is_empty() && !super::current_options().camxes_dialect {
+        // Strict CLL dialect: a lujvo is made of rafsi (§4.5), and CLL's
+        // rafsi are the ones in its list.
+        return Err((
+            ConstraintId::C13,
+            "C13 §4.5 (strict CLL dialect): no segmentation into CLL-era rafsi".into(),
+        ));
+    }
     if segs.is_empty() {
         notes.push(format!(
             "C23: no rafsi segmentation found in CLL-era lexicon ({} entries); C13 necessity not fully decidable for this form",
@@ -236,6 +244,25 @@ pub fn has_valid_rafsi_parse(norm: &str) -> bool {
 mod tests {
     use super::*;
     use crate::cll::constraints::morph_parse;
+
+    #[test]
+    fn camxes_dialect_recognizes_rafsi_shapes_outside_the_list() {
+        use crate::cll::constraints::{with_options, MorphOptions};
+        use crate::cll::tables::RafsiLexicon;
+        // `gam` has a CVC rafsi shape but is not in the CLL-era list.
+        assert!(!RafsiLexicon::global().is_rafsi("gam"));
+        assert!(with_options(MorphOptions::camxes(), || {
+            has_valid_rafsi_parse("gamkemdau")
+        }));
+        // Strict CLL dialect (default, settled): not a lujvo.
+        for opts in [MorphOptions::default(), MorphOptions::settled()] {
+            assert!(with_options(opts, || check_lujvo("gamkemdau").is_err()));
+        }
+        // Still subject to the hyphen rules: an n-hyphen only before `r`.
+        assert!(with_options(MorphOptions::camxes(), || {
+            check_lujvo("zeingamyba'o").is_err()
+        }));
+    }
 
     #[test]
     fn soirsai_r_hyphen_ok() {

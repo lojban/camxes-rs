@@ -19,7 +19,11 @@ pub const LOJBAN_MORPHOLOGY_GRAMMAR: (&str, &str) = (
 
 any_word <- jbovla
 
-jbovla <- pause_0 / cmevla / (cmavo) / (gismu) / (!gismu !fuhivla !cmavo !(ccv h y onset) lujvo_core) / (fuhivla)
+jbovla <- pause_0 / !voicing_clash_ahead (cmevla / (cmavo) / (gismu) / (!gismu !fuhivla !cmavo !(ccv h y onset) lujvo_core) / (fuhivla))
+
+voicing_clash_ahead <- (!pause_0 !voicing_clash .)* voicing_clash
+
+voicing_clash <- [bdgjvzBDGJVZ] [cfkpstxCFKPSTX] / [cfkpstxCFKPSTX] [bdgjvzBDGJVZ]
 
 cmevla <- ((&zifcme any_syllable+ &pause) / zifcme)
 

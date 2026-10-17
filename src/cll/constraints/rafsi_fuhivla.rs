@@ -85,11 +85,11 @@ pub fn try_parse_experimental_lujvo(body: &str) -> Option<String> {
         return None;
     }
     let lex = RafsiLexicon::global();
-    let segs = lex.segment_lujvo(rest);
+    let segs = super::lujvo_segmentations(rest);
     if segs.is_empty() {
         // Rest might itself be a single final gismu / short chain without being
         // in the segmenter if it's one piece — try whole rest as gismu.
-        if lex.is_gismu(rest) || !lex.segment_lujvo(rest).is_empty() {
+        if lex.is_gismu(rest) {
             return Some(format!(
                 "C22 §4.16: experimental rafsi-fu'ivla lujvo (`{stem}`-y+…)"
             ));

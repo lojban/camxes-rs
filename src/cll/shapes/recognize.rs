@@ -196,6 +196,18 @@ fn classify_fragment(norm: &[u8]) -> BTreeSet<MorphClass> {
     classes
 }
 
+/// A name made only of consonants (`.d.`, `.c.`, `.rl.`): CLL §4.8 says names "always end in a consonant" and does not
+/// forbid a vowelless name; it is allowed iff every adjacent pair is a
+/// permissible consonant pair and every triple a permissible triple (§3.7),
+/// so `mz` and `ndj` are not names.
+fn is_consonant_only_name(norm: &[u8]) -> bool {
+    norm.windows(2)
+        .all(|w| is_permissible_medial_pair(w[0], w[1]))
+        && norm
+            .windows(3)
+            .all(|w| is_permissible_triple(w[0], w[1], w[2]))
+}
+
 fn is_pure_consonant_fragment(norm: &[u8]) -> bool {
     norm.len() <= 3 && !norm.is_empty() && norm.iter().all(|&c| is_c(c))
 }
@@ -266,7 +278,10 @@ fn recognize_normalized(normalized: String) -> ShapeResult {
 
     // Pure consonant fragments (pairs/triples fixtures) — table predicates only.
     if is_pure_consonant_fragment(bytes) {
-        let classes = classify_fragment(bytes);
+        let mut classes = classify_fragment(bytes);
+        if is_consonant_only_name(bytes) {
+            classes.insert(MorphClass::Cmevla);
+        }
         return ShapeResult {
             accepted: !classes.is_empty(),
             classes,
@@ -348,6 +363,16 @@ mod tests {
         assert!(!accept("mz"));
         assert!(!accept("ndj"));
         assert!(!accept("sc"));
+        // Consonant-only names: permissible pairs/triples only (§3.7, §4.8).
+        for name in ["d", "c", "rl", "bl"] {
+            assert!(classify(name).contains(&MorphClass::Cmevla), "{name}");
+        }
+        for not_name in ["mz", "ndj", "bf"] {
+            assert!(
+                !classify(not_name).contains(&MorphClass::Cmevla),
+                "{not_name}"
+            );
+        }
     }
 
     #[test]
@@ -365,6 +390,18 @@ mod tests {
         assert!(!accept("trkaile"));
         assert!(accept("tricrxaceru"));
         assert!(accept("bongnanba"));
+    }
+
+    #[test]
+    fn vowel_runs_group_from_the_left() {
+        // CLL §3.5: vowels pair from the left (diphthong, then vowel).
+        for w in ["blaia", "gruue", "jdaio", "tsauai", "traii", "gondiii'i"] {
+            assert!(recognize(w).classes.contains(&MorphClass::Fuhivla), "{w}");
+        }
+        // `eu`, `ou`, `ea` are not diphthongs: a comma or apostrophe is needed.
+        for w in ["proteuu", "gleua", "paxtoua", "blea"] {
+            assert!(!recognize(w).classes.contains(&MorphClass::Fuhivla), "{w}");
+        }
     }
 
     #[test]

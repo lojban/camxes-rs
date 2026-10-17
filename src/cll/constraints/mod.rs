@@ -15,7 +15,7 @@ pub mod slinkui;
 pub mod stress;
 pub mod tosmabru;
 
-pub use options::MorphOptions;
+pub use options::{current_options, with_options, MorphOptions};
 
 use crate::cll::cfg::CandidateSpan;
 use crate::cll::lex::WordClass;
@@ -122,9 +122,10 @@ fn push_id(constraint_ids: &mut Vec<ConstraintId>, id: ConstraintId) {
     }
 }
 
-/// Apply CLL constraint filters with default options, including the §4.16 proposal.
+/// Apply CLL constraint filters with this thread's options
+/// ([`current_options`]; by default including the §4.16 proposal).
 pub fn constrain(original: &str, shape: &ShapeResult) -> ConstrainedResult {
-    constrain_with(original, shape, MorphOptions::default())
+    constrain_with(original, shape, current_options())
 }
 
 /// Apply CLL constraint filters.
@@ -133,6 +134,10 @@ pub fn constrain_with(
     shape: &ShapeResult,
     opts: MorphOptions,
 ) -> ConstrainedResult {
+    with_options(opts, || constrain_inner(original, shape, opts))
+}
+
+fn constrain_inner(original: &str, shape: &ShapeResult, opts: MorphOptions) -> ConstrainedResult {
     let mut classes = shape.classes.clone();
     let mut rejected_by = Vec::new();
     let mut notes = Vec::new();
@@ -182,8 +187,8 @@ pub fn constrain_with(
         };
     }
 
-    // C19 cmevla ban
-    if classes.contains(&MorphClass::Cmevla) {
+    // C19 cmevla ban (off in the camxes dialect)
+    if classes.contains(&MorphClass::Cmevla) && !opts.camxes_dialect {
         if let Some(hit) = cmevla_ban::banned_substring(norm) {
             classes.remove(&MorphClass::Cmevla);
             push_id(&mut rejected_by, ConstraintId::C19);
@@ -274,7 +279,10 @@ pub fn constrain_with(
                 push_id(&mut rejected_by, id);
             }
             notes.push(detail);
-            classes.clear();
+            // Drop the word readings; a consonant fragment (`bl` as a
+            // consonant pair) stays a fragment when its name reading lacks
+            // the required pause.
+            classes.retain(|c| c.to_word_class().is_none());
         }
     }
 
@@ -312,26 +320,17 @@ pub fn constrain_with(
 // caching avoids rebuilding Earley charts. Cap prevents unbounded growth on
 // infinite streams of novel tokens.
 thread_local! {
-    static MORPH_CACHE: std::cell::RefCell<std::collections::HashMap<String, ConstrainedResult>> =
-        std::cell::RefCell::new(std::collections::HashMap::new());
+    static MORPH_CACHE: std::cell::RefCell<
+        std::collections::HashMap<(MorphOptions, String), ConstrainedResult>,
+    > = std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 const MORPH_CACHE_CAP: usize = 8192;
 
-/// Shape recognize + constrain using default options. Results are cached per thread.
+/// Shape recognize + constrain with this thread's options
+/// ([`current_options`]). Results are cached per thread and options.
 pub fn morph_parse(input: &str) -> ConstrainedResult {
-    if let Some(hit) = MORPH_CACHE.with(|cache| cache.borrow().get(input).cloned()) {
-        return hit;
-    }
-    let result = constrain(input, &recognize(input));
-    MORPH_CACHE.with(|cache| {
-        let mut entries = cache.borrow_mut();
-        if entries.len() >= MORPH_CACHE_CAP {
-            entries.clear();
-        }
-        entries.insert(input.to_string(), result.clone());
-    });
-    result
+    morph_parse_with(input, current_options())
 }
 
 /// Clear the thread-local morph_parse cache (tests / benches).
@@ -339,9 +338,41 @@ pub fn clear_morph_cache() {
     MORPH_CACHE.with(|c| c.borrow_mut().clear());
 }
 
-/// Shape recognize + constrain with options.
+/// Shape recognize + constrain with options (cached per thread). Nested
+/// analyses (fall-apart, slinku'i) use the same options.
 pub fn morph_parse_with(input: &str, opts: MorphOptions) -> ConstrainedResult {
-    constrain_with(input, &recognize(input), opts)
+    let key = (opts, input.to_string());
+    if let Some(hit) = MORPH_CACHE.with(|cache| cache.borrow().get(&key).cloned()) {
+        return hit;
+    }
+    let result = constrain_with(input, &recognize(input), opts);
+    MORPH_CACHE.with(|cache| {
+        let mut entries = cache.borrow_mut();
+        if entries.len() >= MORPH_CACHE_CAP {
+            entries.clear();
+        }
+        entries.insert(key, result.clone());
+    });
+    result
+}
+
+/// Rafsi segmentations of a lujvo candidate under this thread's options:
+/// by rafsi shape in the camxes dialect ([`MorphOptions::camxes_dialect`]), else from
+/// the CLL-era rafsi list.
+pub(crate) fn lujvo_segmentations(body: &str) -> Vec<crate::cll::tables::LujvoSegmentation> {
+    let lex = crate::cll::tables::RafsiLexicon::global();
+    // Stress capitals and syllable commas (§3.3, §3.9) are not letters of
+    // the rafsi: `DI,ky,jvo` is `dik` + `y` + `jvo`.
+    let clean: String = body
+        .chars()
+        .filter(|&c| c != ',')
+        .map(|c| c.to_ascii_lowercase())
+        .collect();
+    if current_options().camxes_dialect {
+        lex.segment_lujvo_by_form(&clean)
+    } else {
+        lex.segment_lujvo(&clean)
+    }
 }
 
 /// Sketch-compatible per-span runner.
@@ -401,6 +432,19 @@ mod tests {
         assert!(r.rejected_by.contains(&ConstraintId::C19));
         let r2 = morph_parse("ilanas.");
         assert!(!r2.accepted, "{r2:?}");
+    }
+
+    #[test]
+    fn camxes_dialect_allows_la_in_names() {
+        let strict = morph_parse_with("laplas.", MorphOptions::default());
+        assert!(
+            strict.rejected_by.contains(&ConstraintId::C19),
+            "{strict:?}"
+        );
+        let modern = morph_parse_with("laplas.", MorphOptions::camxes());
+        assert!(modern.classes.contains(&MorphClass::Cmevla), "{modern:?}");
+        // The thread's options are restored afterwards.
+        assert_eq!(current_options(), MorphOptions::default());
     }
 
     #[test]

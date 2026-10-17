@@ -65,6 +65,11 @@ const INVALID_EVERYWHERE: &[(&str, &str)] = &[
     ("spatrleoxari", "vowel hiatus `eo` without apostrophe"),
     ("stagrleoxari", "vowel hiatus `eo` without apostrophe"),
     ("xa!", "`!` is not Lojban orthography"),
+    (
+        "ciztolnei",
+        "medial `zt` mixes voiced and unvoiced (CLL §3.7)",
+    ),
+    ("refgau", "medial `fg` mixes unvoiced and voiced (CLL §3.7)"),
 ];
 
 /// Categories of PEG-accepted headwords on which the Earley engine (CLL
@@ -79,7 +84,7 @@ const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
     (
         "medial-pair",
         "camxes bug",
-        "medial consonant pair forbidden by CLL §3.7 (`zt`, `fg`, `mz`); camxes checks only some clusters",
+        "medial `mz`, which CLL §3.7 forbids (\"the specific pairs cx, kx, xc, xk, and mz are forbidden\"); the camxes PEG grammar does not check it",
     ),
     (
         "hesitation",
@@ -97,24 +102,14 @@ const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
         "CLL §3.3: a comma is a syllable break, not a word boundary; camxes splits words at commas",
     ),
     (
-        "name-la",
-        "CLL rule",
-        "CLL §4.8: a name must not contain `la`, `lai` or `doi` (except after a consonant); Earley rejects it or reads the cmavo out of it",
-    ),
-    (
-        "consonant-name",
-        "camxes extension",
-        "consonant-only names (camxes `zifcme`, used for lerfu); CLL §4.8 names are syllabic words and CLL has no consonant-only form",
-    ),
-    (
         "vowel-grouping",
         "CLL rule",
-        "CLL §3.4: vowels other than the diphthongs need an apostrophe or comma between them (\"a comma must be used\" for other groupings); camxes allows on-glides after a vowel",
+        "a vowel run whose left grouping starts with a non-diphthong pair (`eu`, `ou`): CLL §3.5 \"pairs vowels from the left into syllables\" (Example 3.6: the diphthong ei followed by the vowel i) and \"In order to indicate a different grouping, the comma must always be used\"; `eu` and `ou` are not among the §3.4 diphthongs, and two vowels that are not a diphthong form a two-syllable pair only \"with the apostrophe separating them\" (§3.5); camxes accepts the run",
     ),
     (
         "fuhivla-cluster",
         "CLL rule",
-        "CLL §4.7 rule 1: a fu'ivla must have a consonant cluster in the first five letters; camxes allows a later cluster",
+        "CLL §4.7 rule 1: every fu'ivla \"must contain a consonant cluster in the first five letters of the word\" (the apostrophe is not a consonant, §3.6); `ku'aidzi` has `k u ' a i` as its first five letters and its only cluster `dz` at letters 6-7; camxes allows a later cluster",
     ),
     (
         "hyphen-not-required",
@@ -122,9 +117,24 @@ const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
         "CLL §4.6: \"It is illegal to add a hyphen at a place that is not required\"; an r/n after a non-initial CVV rafsi is not a hyphen, so the word is not a lujvo (Earley: fu'ivla)",
     ),
     (
-        "non-cll-rafsi",
+        "n-hyphen",
         "CLL rule",
-        "camxes lujvo built from pieces that are not CLL §4.5 rafsi forms (vowel-initial pieces, CV'V/CVV + `y`, `'` after `y`, CVCV finals, 5-letter rafsi not at the end, 4-letter rafsi without `y`, CVV rafsi with a non-diphthong); per §4.6/§4.7 Earley rejects the word or breaks it into the words it falls apart into",
+        "CLL §4.6: the n-hyphen is used only before `r` (otherwise the r-hyphen); `zein` + `gamy…` has an n-hyphen before `g`, so it is not a lujvo",
+    ),
+    (
+        "rafsi-vowel-initial",
+        "CLL rule",
+        "CLL §4.5: every rafsi form (CVC, CVV, CV'V, CCV, CVCC, CCVC, CVCCV, CCVCV) begins with a consonant; camxes lujvo that start with a vowel (`afxanyru'u`) or have a vowel-initial piece after `y` (`pedy'utka`, `batkyuidje`) are not built from rafsi, even with open rafsi",
+    ),
+    (
+        "y-after-vowel",
+        "CLL rule",
+        "CLL §4.6: the `y` hyphen follows only a consonant-final (CVC or 4-letter) rafsi; camxes allows `y` after a CVV/CV'V piece (`baxmasi'ygu'e`, `ximblai'yma'a`)",
+    ),
+    (
+        "rafsi-shape",
+        "CLL rule",
+        "camxes lujvo with a piece of no §4.5 rafsi shape: stems longer than 4 letters before `y` (`kexmair-`, `faurs-`), CVCV or CCVV finals (`-todi`, `-crai`), a 5-letter rafsi not at the end (`-junta-`), a 4-letter rafsi without `y` (`karn-cau`); Earley rejects the word or reads the words it falls apart into (§4.6/§4.7)",
     ),
 ];
 

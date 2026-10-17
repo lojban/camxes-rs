@@ -402,7 +402,11 @@ fn classify_stream_word(cand: &str) -> Option<WordParts> {
 /// (C07). At a recognized stream boundary those pauses are implied.
 pub fn morph_parse_stream_piece(text: &str) -> ConstrainedResult {
     let primary = morph_parse(text);
-    if primary.accepted {
+    // A consonant fragment (`xm` as a consonant pair) is not yet a word: try
+    // the name reading with the implied pause.
+    let is_word =
+        |r: &ConstrainedResult| r.accepted && r.classes.iter().any(|c| c.to_word_class().is_some());
+    if is_word(&primary) {
         return primary;
     }
     let core = text.trim_matches('.');
@@ -437,7 +441,7 @@ pub fn morph_parse_stream_piece(text: &str) -> ConstrainedResult {
         rebuilt.push('.');
     }
     let alt = morph_parse(&rebuilt);
-    if alt.accepted {
+    if is_word(&alt) {
         alt
     } else {
         primary

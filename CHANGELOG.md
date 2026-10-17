@@ -29,7 +29,7 @@ with a major bump rather than claiming compatibility with the 1.x API.
   (`src/cll/data/cll21.ebnf`) over selma'o tokens from `cmavo_selmaho.tsv`,
   with elidable terminators; trees use the Chapter 21 rule names. It gives
   the same word split and classes as the PEG engine on every PEG-accepted
-  dictionary headword except 262 documented camxes/CLL differences
+  dictionary headword except 230 documented camxes/CLL differences
   (`tests/data/known-differences.tsv`, README "Differences between the PEG
   (camxes) and Earley (CLL) engines"), and also accepts the
   older CLL dialect (obsolete words such as `kuarka`; note that the
@@ -84,7 +84,47 @@ with a major bump rather than claiming compatibility with the 1.x API.
   test fails if either engine deviates. CI workflow `.github/workflows/test.yml`
   runs it with `--features earley`.
 
+- Earley dialect switch (feature `earley`): `morphology::MorphOptions`
+  (re-export of the shared tergenzalvi type) has one dialect field,
+  `camxes_dialect`, next to the §4.16 flag `rafsi_fuhivla`. Strict CLL
+  (`false`) and the camxes dialect (`true`) differ in exactly two ways that
+  always change together: (1) lujvo built from rafsi outside the CLL-era
+  list are recognised by §4.5 rafsi shape (CVC, CVV/CV'V, CCV, 4-letter +
+  `y`, final 5-letter), still subject to the §4.6 hyphen and §4.7
+  tosmabru/slinku'i rules; strict CLL accepts only list rafsi (C13); and
+  (2) names may contain `la`/`lai`/`doi` (strict CLL applies the §4.8 ban,
+  C19). Presets `default()` (strict CLL + §4.16), `settled()` (strict CLL,
+  no §4.16) and `camxes()`; `with_camxes_dialect`. `Engine::Earley` uses
+  `morphology::earley_options()` = `camxes()`; `morphology::analyze_with_options`
+  and `syntax::parse_with_options` take any options. `WordDialect` stays
+  rule-based. `volapuk`, `laus`, `lat`, `lauDZIS`, `katajinadelazariRAdek`,
+  `kuualalumpur`, `tigbalan`, `doitclan` now agree with the PEG engine.
+- Consonant-only names in the shared CLL code (both dialects): a name made
+  only of consonants is accepted when every adjacent pair and triple is
+  permissible (§3.7): `.d.`, `.c.`, `.t.`, `.rl.`, `.xm.` are names, `.mz.`
+  and `.ndj.` are not. `t`, `xm`, `ng bu`, `b zei p zei f zei k`,
+  `l zei l zei g` and the `dwe` texts ending in `zo d` / `la c` now agree
+  with the PEG engine.
+
 ### Fixed
+- Earley (shared CLL code): vowel runs in fu'ivla are grouped from the left
+  as CLL §3.5 says ("When more than two vowels occur together in Lojban,
+  the normal pronunciation pairs vowels from the left into syllables"):
+  a stretch of diphthongs optionally ending in one vowel, across
+  apostrophes too. A fu'ivla may consist of one such run of two or more
+  syllables (`blaia`, `gruue`, `jdaio`, `sriuu`, `tsauai`, `traii`). A
+  non-diphthong adjacent pair (`eu`, `ou`, `ea`) still needs a comma or
+  apostrophe; gismu/lujvo diphthong restrictions are unchanged. 17 dictionary
+  headwords now agree with the PEG engine (`blaia`, `briii`,
+  `cmaiueiorze'aiuei`, `gondiii'i`, `gruue`, `jboia`, `jboiu`, `jdaio`,
+  `jmaia`, `mla'aiana`, `onmatopo'eia`, `sriuu`, `tciuaua`, `traii`,
+  `tsauai`, `vluuo`, `xruii`).
+- `grammars::LOJBAN_MORPHOLOGY_GRAMMAR` (PEG) accepted words with a medial
+  consonant pair mixing voiced and unvoiced consonants (CLL §3.7). A word is
+  now rejected when a voicing clash occurs before the next pause; on the
+  dictionary corpus this rejects exactly `ciztolnei` (`zt`) and `refgau`
+  (`fg`), now invalid for both engines. The forbidden pair `mz` is still not
+  checked (`vamzma` remains a known difference).
 - Public entry points return errors instead of panicking on arbitrary input
   or grammar text (new `tests/robustness.rs` fuzz-style test):
   - `Peg::new` panicked on non-ASCII grammar text (`'п'`, `[а-я]`); `.`
@@ -125,6 +165,15 @@ with a major bump rather than claiming compatibility with the 1.x API.
   `LICENSE` at the repository root.
 
 ### Changed
+- Known differences (`tests/data/known-differences.tsv`,
+  `DIFFERENCE_CATEGORIES`): 262 → 230. `name-la` and `consonant-name` are
+  gone; `non-cll-rafsi` (171) is split by the specific CLL rule each word
+  breaks: `n-hyphen` (2), `rafsi-vowel-initial` (98), `y-after-vowel` (16),
+  `rafsi-shape` (55); `medial-pair` is now `vamzma` only.
+  After the vowel-grouping fix (see Fixed) `vowel-grouping` has 15 words (runs
+  whose left grouping starts with the non-diphthong `eu`/`ou`) and
+  `fuhivla-cluster` 13 (`nijnanidouaga` moved to `vowel-grouping`;
+  `mla'aiana` now agrees). Total 230.
 - `Peg` gained crate-private fields (annotations, delimiter stack), so it can
   no longer be built with a struct literal outside the crate; use
   `Peg::new` (the public fields `rules`, `start`, `memo` are unchanged).
@@ -148,7 +197,7 @@ with a major bump rather than claiming compatibility with the 1.x API.
   the §4.5 restrictions, the literal slinku'i test, the §4.6/§4.7 cmavo
   break-up rule, digits as `PA`) are shared with tergenzalvi. The mapping
   to camxes word types and the obsolete-form rule moved to
-  `src/morphology/camxes.rs`. The 262 PEG-accepted headwords on which the
+  `src/morphology/camxes.rs`. The 230 PEG-accepted headwords on which the
   engines now differ are listed by category in
   `tests/data/known-differences.tsv` and in the README.
 - The Chapter 21 lexer no longer splits an unknown cmavo before a vowel

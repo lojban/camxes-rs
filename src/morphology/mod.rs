@@ -257,14 +257,47 @@ impl fmt::Display for MorphologyError {
 
 impl std::error::Error for MorphologyError {}
 
+/// Options (dialect switches) of the CLL pipeline; see
+/// [`earley_options`] and [`analyze_with_options`].
+#[cfg(feature = "earley")]
+pub use crate::cll::constraints::MorphOptions;
+
+/// The options `Engine::Earley` uses: [`MorphOptions::camxes()`], i.e. CLL
+/// Chapters 3–4 and the §4.16 rafsi fu'ivla proposal, with the single
+/// camxes dialect switch on ([`MorphOptions::camxes_dialect`]: lujvo from
+/// rafsi outside the CLL-era list, and `la`/`lai`/`doi` inside names). Use
+/// [`analyze_with_options`] with [`MorphOptions::default()`] (or
+/// [`MorphOptions::settled()`], which also drops §4.16) for strict CLL.
+#[cfg(feature = "earley")]
+pub fn earley_options() -> MorphOptions {
+    MorphOptions::camxes()
+}
+
 /// Split `input` into words and classify them with the chosen engine.
+/// `Engine::Earley` runs the CLL pipeline with `earley_options()` (feature `earley`).
 pub fn analyze(input: &str, engine: Engine) -> Result<Morphology, MorphologyError> {
-    let mut m = match engine {
+    match engine {
         #[cfg(feature = "peg")]
-        Engine::Peg => peg::analyze(input)?,
+        Engine::Peg => {
+            let mut m = peg::analyze(input)?;
+            annotate_selmaho(&mut m);
+            Ok(m)
+        }
         #[cfg(feature = "earley")]
-        Engine::Earley => earley::analyze(input)?,
-    };
+        Engine::Earley => analyze_with_options(input, earley_options()),
+    }
+}
+
+/// `Engine::Earley` analysis with explicit CLL pipeline options (dialect).
+/// The options decide which words the CLL pipeline accepts; each accepted
+/// word's [`WordDialect`] is still decided by the camxes rules alone, so a
+/// word accepted only through the camxes dialect (such as `volapuk`) is `Standard` when camxes accepts it.
+#[cfg(feature = "earley")]
+pub fn analyze_with_options(
+    input: &str,
+    options: MorphOptions,
+) -> Result<Morphology, MorphologyError> {
+    let mut m = crate::cll::constraints::with_options(options, || earley::analyze(input))?;
     annotate_selmaho(&mut m);
     Ok(m)
 }
@@ -318,6 +351,34 @@ mod tests {
 
     fn s(words: &[(&str, WordClass)]) -> Vec<(String, WordClass)> {
         words.iter().map(|(t, c)| (t.to_string(), *c)).collect()
+    }
+
+    #[cfg(feature = "earley")]
+    #[test]
+    fn earley_dialect_options() {
+        use WordClass::*;
+        // camxes dialect (Engine::Earley): `la` inside a name …
+        let m = analyze("volapuk", Engine::Earley).unwrap();
+        assert_eq!(m.signature(), s(&[("volapuk", Cmevla)]));
+        assert!(!m.has_obsolete());
+        // … and a lujvo from rafsi outside the CLL-era list (`gam`).
+        let m = analyze("gamkemdau", Engine::Earley).unwrap();
+        assert_eq!(m.signature(), s(&[("gamkemdau", Lujvo)]));
+        // Strict CLL (one switch turns off both): §4.8 bans `la` in names,
+        // and `gam` is not a CLL rafsi.
+        let strict = analyze_with_options("volapuk", MorphOptions::default());
+        assert!(strict.map_or(true, |m| m.signature() != s(&[("volapuk", Cmevla)])));
+        let strict = analyze_with_options("gamkemdau", MorphOptions::default());
+        assert!(strict.map_or(true, |m| m.signature() != s(&[("gamkemdau", Lujvo)])));
+        // Consonant-only names with permissible pairs, in every dialect.
+        for opts in [
+            MorphOptions::settled(),
+            MorphOptions::default(),
+            MorphOptions::camxes(),
+        ] {
+            let m = analyze_with_options("la .c. cu klama", opts).unwrap();
+            assert_eq!(m.words[1].class, Cmevla, "{opts:?}");
+        }
     }
 
     #[test]

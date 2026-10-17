@@ -20,7 +20,7 @@
 use super::{Constraint, ConstraintMeta, ConstraintStatus, Reject};
 use crate::cll::cfg::CandidateSpan;
 use crate::cll::phonology::{is_c, is_permissible_initial_pair, is_v};
-use crate::cll::tables::{classify_rafsi_shape, LujvoSegmentation, RafsiLexicon, RafsiShape};
+use crate::cll::tables::{classify_rafsi_shape, LujvoSegmentation, RafsiShape};
 
 pub struct Tosmabru;
 
@@ -55,8 +55,7 @@ pub enum TosmabruVerdict {
 
 pub fn check_partial(norm: &str) -> TosmabruVerdict {
     let body = norm.trim_matches('.');
-    let lex = RafsiLexicon::global();
-    let segs = lex.segment_lujvo(body);
+    let segs = super::lujvo_segmentations(body);
 
     // Prefer lexicon segmentations that already satisfy step-4 hyphens except
     // possibly the tosmabru y (step 5). We evaluate each segmentation.
