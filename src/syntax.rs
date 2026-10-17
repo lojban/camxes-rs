@@ -11,11 +11,15 @@
 //!   derivation; if that does not cover the text, any derivation of the
 //!   grammar that does. This is a superset of the PEG result.
 //!
-//! Known limitation: the grammar's `zoi`/`la'o` quotes need delimiter
-//! back-references (`#: PUSH`/`#: POP-EQ` in ilmentufa) that neither engine
-//! implements. The PEG engine's greedy repetition then swallows the closing
-//! delimiter and rejects `zoi gy. text .gy`; the Earley engine accepts it but
-//! does not check that both delimiters are the same word.
+//! `zoi`/`la'o` quotes: the grammar marks the delimiter rules with
+//! ilmentufa's `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations. The
+//! Earley engine enforces them: `zoi X. … .X` is accepted only when the
+//! closing word equals the opening one (case, pauses and commas ignored,
+//! `h` ≡ `'`) and the quote ends at the first such word, so the quoted text
+//! never contains the delimiter as a separate word; `zoi gy. hello .dy glico`
+//! is rejected. The PEG engine has no back-references and its greedy
+//! repetition swallows the closing delimiter, so it rejects every `zoi`/`la'o`
+//! quote.
 //!
 //! ```rust
 //! use camxes_rs::morphology::Engine;
@@ -23,6 +27,12 @@
 //!
 //! assert!(syntax::accepts("lo gerku cu batci lo mlatu", Engine::Peg));
 //! assert!(!syntax::accepts("lo cu klama", Engine::Peg));
+//!
+//! #[cfg(feature = "earley")]
+//! {
+//!     assert!(syntax::accepts("zoi gy. hello world .gy glico", Engine::Earley));
+//!     assert!(!syntax::accepts("zoi gy. hello .dy glico", Engine::Earley));
+//! }
 //! ```
 
 use crate::grammars::LOJBAN_GRAMMAR;

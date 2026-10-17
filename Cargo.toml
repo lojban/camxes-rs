@@ -2,10 +2,10 @@
 name = "camxes-rs"
 version = "2.0.0"
 edition = "2021"
-description = "PEG parser generator with Lojban/Loglan grammars, plus an optional Earley engine and CLL-dialect Lojban morphology"
+description = "PEG parser generator with Lojban grammars, plus an optional Earley engine and CLL-dialect Lojban morphology"
 license = "MIT"
 repository = "https://github.com/lojban/camxes-rs"
-keywords = ["peg", "parser", "earley", "lojban", "loglan"]
+keywords = ["peg", "parser", "earley", "lojban", "morphology"]
 categories = ["parsing", "parser-implementations"]
 readme = "README.md"
 # Large test fixtures stay in the repository but are not shipped to crates.io.
@@ -14,17 +14,9 @@ exclude = [
     "/tests/dictionary_corpus.rs",
     "/examples/morphology_corpus.rs",
     "/scripts/",
-    "/loglan-wasm-app/",
     "/.github/",
     "/.cargo/",
 ]
-
-[workspace]
-members = [
-    ".", # The root crate
-    "loglan-wasm-app", # The new WASM app crate
-]
-resolver = "2" # Use the version 2 resolver
 
 [package.metadata.docs.rs]
 all-features = true
@@ -48,10 +40,6 @@ flate2 = "1"
 [[example]]
 name = "cmaxes-test"
 path = "src/examples/cmaxes-test.rs"
-
-[[example]]
-name = "loglan"
-path = "src/examples/loglan.rs"
 
 [[example]]
 name = "morphology_corpus"

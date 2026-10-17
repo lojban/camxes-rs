@@ -292,7 +292,9 @@ pub fn compile_ebnf(src: &str, start: &str) -> Result<(TokenGrammar, CompileStat
     }
 
     // any-word ::= BRIVLA | CMENE | <every selma'o terminal>
-    // anything ::= any-word | anything any-word  (GAP approximation for ZOI body)
+    // anything ::= FOREIGN — the ZOI / LA'O body arrives from the pre-lex
+    // quote step as one opaque lexeme (CLL 19.10); it is deliberately *not*
+    // an any-word, so it can only appear between the quote delimiters.
     let brivla = compiler.intern_term("BRIVLA");
     let cmevla = compiler.intern_term("CMENE");
     compiler.add_prod(any_word, vec![Symbol::Term(brivla)]);
@@ -306,8 +308,8 @@ pub fn compile_ebnf(src: &str, start: &str) -> Result<(TokenGrammar, CompileStat
         let tid = compiler.intern_term(term_name);
         compiler.add_prod(any_word, vec![Symbol::Term(tid)]);
     }
-    compiler.add_prod(anything, vec![Symbol::Nt(any_word)]);
-    compiler.add_prod(anything, vec![Symbol::Nt(anything), Symbol::Nt(any_word)]);
+    let foreign = compiler.intern_term(super::lexeme::FOREIGN_TERMINAL);
+    compiler.add_prod(anything, vec![Symbol::Term(foreign)]);
 
     // Ensure free exists (may be empty if # never used before free rule — but free is in source)
     let _ = compiler.intern_nt("free");

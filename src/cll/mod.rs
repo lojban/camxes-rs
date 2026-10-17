@@ -1,5 +1,6 @@
 //! Vendored copy of [tergenzalvi](https://github.com/lagleki/tergenzalvi)
-//! (commit 6eaea40, MIT OR Apache-2.0, same author): CLL Chapters 3–4
+//! (commit e07f176, same author; tergenzalvi is MIT OR Apache-2.0 and is
+//! included here under the crate's MIT license): CLL Chapters 3–4
 //! morphology (CFG/Earley shapes + constraint filters) and the Chapter 21
 //! cmavo lexicon / syntax layer. Used by the `earley` feature; vendored so
 //! that camxes-rs can be published without a git dependency. Only the

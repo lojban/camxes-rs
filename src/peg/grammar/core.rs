@@ -14,6 +14,9 @@ impl Peg {
     pub fn new(start: &str, grammar: &str) -> GrammarResult<Self> {
         // Token spans index into the text that was parsed, so parse the same
         // trimmed text the transformer slices (indented grammars used to panic).
+        // `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` annotations only matter to
+        // the Earley engine; the PEG engine parses the plain rules.
+        let (grammar, _) = crate::peg::annotations::strip_annotations(grammar);
         let grammar = grammar.trim();
         let parser = Self::bootstrap();
         match parser.parse(grammar) {

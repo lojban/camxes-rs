@@ -58,6 +58,21 @@ impl Chart {
 }
 
 type Ends = Rc<Vec<u32>>;
+/// Matches of one quote from a position: `(open end, middle end, close end)`,
+/// preferred first.
+type QuoteMatches = Rc<Vec<(u32, u32, u32)>>;
+
+/// Normalized delimiter word for `#: PUSH` / `#: POP-EQ` comparison: ASCII
+/// lower case, pauses, commas and whitespace dropped, `h` ≡ `'`.
+fn delimiter_key(text: &[u8]) -> Vec<u8> {
+    text.iter()
+        .filter(|b| !matches!(b, b'.' | b',' | b'?' | b'!') && !b.is_ascii_whitespace())
+        .map(|b| match b.to_ascii_lowercase() {
+            b'h' => b'\'',
+            other => other,
+        })
+        .collect()
+}
 
 pub(super) struct Parse<'g> {
     g: &'g EarleyGrammar,
@@ -70,6 +85,11 @@ pub(super) struct Parse<'g> {
     nt_pref: FxHashMap<(u32, u32), Ends>,
     seq_pref: FxHashMap<(u32, u32, u32), Ends>,
     pref_active: FxHashSet<(u32, u32)>,
+    /// All end positions `(nonterminal, position)` → ascending ends, used by
+    /// quotes (sub-recognitions also record into `done`).
+    all_ends: FxHashMap<(u32, u32), Ends>,
+    ends_active: FxHashSet<(u32, u32)>,
+    quote_memo: FxHashMap<(u32, u32), QuoteMatches>,
     furthest: usize,
 }
 
@@ -78,6 +98,8 @@ enum Mode {
     Record,
     /// Stop as soon as `nt` completes from the starting position.
     Prefix(u32),
+    /// Record every completion and collect all ends of `nt` from the start.
+    Ends(u32),
 }
 
 impl<'g> Parse<'g> {
@@ -91,6 +113,9 @@ impl<'g> Parse<'g> {
             nt_pref: FxHashMap::default(),
             seq_pref: FxHashMap::default(),
             pref_active: FxHashSet::default(),
+            all_ends: FxHashMap::default(),
+            ends_active: FxHashSet::default(),
+            quote_memo: FxHashMap::default(),
             furthest: 0,
         }
     }
@@ -121,27 +146,30 @@ impl<'g> Parse<'g> {
 
     pub(super) fn run_main(&mut self) {
         let start = self.g.start;
-        self.run(start, 0, Mode::Record);
+        self.run(start, 0, Mode::Record, &mut Vec::new());
     }
 
     /// Run Earley from `from` predicting `start`. In prefix mode returns true
-    /// once `start` completes from `from`.
-    fn run(&mut self, start: u32, from: usize, mode: Mode) -> bool {
+    /// once `start` completes from `from`; in ends mode pushes every end of
+    /// `start` from `from` onto `ends` (ascending).
+    fn run(&mut self, start: u32, from: usize, mode: Mode, ends: &mut Vec<u32>) -> bool {
         let n = self.input.len();
         let mut chart = Chart::new(from, n);
         chart.predicted[0].insert(start);
         self.predict(&mut chart, start, from);
-        let record = matches!(mode, Mode::Record);
-        let target = match mode {
-            Mode::Prefix(nt) => Some(nt),
-            Mode::Record => None,
+        let main = matches!(mode, Mode::Record);
+        let record = !matches!(mode, Mode::Prefix(_));
+        let (target, collect) = match mode {
+            Mode::Prefix(nt) => (Some(nt), None),
+            Mode::Ends(nt) => (None, Some(nt)),
+            Mode::Record => (None, None),
         };
         for i in from..=n {
             let ki = i - from;
             if chart.sets[ki].is_empty() {
                 continue;
             }
-            if record {
+            if main {
                 self.furthest = self.furthest.max(i);
             }
             let mut k = 0;
@@ -160,6 +188,9 @@ impl<'g> Parse<'g> {
                     }
                     if target == Some(lhs) && origin == from {
                         return true;
+                    }
+                    if collect == Some(lhs) && origin == from && ends.last() != Some(&(i as u32)) {
+                        ends.push(i as u32);
                     }
                     if origin == i {
                         chart.eps[ki].insert(lhs);
@@ -197,10 +228,77 @@ impl<'g> Parse<'g> {
                             chart.add(i, item.advance());
                         }
                     }
+                    Sym::Quote(q) => {
+                        let matches = self.quote_matches(q, i);
+                        for &(_, _, end) in matches.iter() {
+                            chart.add(end as usize, item.advance());
+                        }
+                    }
                 }
             }
         }
         false
+    }
+
+    /// Every end of `nt` from `pos`, ascending (memoized sub-recognition).
+    fn ends_of(&mut self, nt: u32, pos: usize) -> Ends {
+        if !self.g.nt_nullable[nt as usize]
+            && self
+                .input
+                .get(pos)
+                .is_none_or(|&c| !self.g.nt_first[nt as usize].contains(c))
+        {
+            return Rc::new(Vec::new());
+        }
+        let key = (nt, pos as u32);
+        if let Some(v) = self.all_ends.get(&key) {
+            return v.clone();
+        }
+        if !self.ends_active.insert(key) {
+            return Rc::new(Vec::new());
+        }
+        let mut ends = Vec::new();
+        self.run(nt, pos, Mode::Ends(nt), &mut ends);
+        self.ends_active.remove(&key);
+        let rc = Rc::new(ends);
+        self.all_ends.insert(key, rc.clone());
+        rc
+    }
+
+    /// Matches of quote `q` from `pos`: the opening delimiter, then the
+    /// middle up to the **first** position where a closing delimiter with
+    /// the same [`delimiter_key`] follows. Longer delimiters are preferred.
+    fn quote_matches(&mut self, q: u32, pos: usize) -> QuoteMatches {
+        let key = (q, pos as u32);
+        if let Some(v) = self.quote_memo.get(&key) {
+            return v.clone();
+        }
+        let quote = self.g.quotes[q as usize];
+        let mut out = Vec::new();
+        let opens = self.ends_of(quote.open, pos);
+        for &open_end in opens.iter().rev() {
+            let delimiter = delimiter_key(&self.input[pos..open_end as usize]);
+            if delimiter.is_empty() {
+                continue;
+            }
+            let middles = self.ends_of(quote.middle, open_end as usize);
+            for &middle_end in middles.iter() {
+                let closes = self.ends_of(quote.close, middle_end as usize);
+                let before = out.len();
+                for &close_end in closes.iter().rev() {
+                    let word = &self.input[middle_end as usize..close_end as usize];
+                    if close_end > middle_end && delimiter_key(word) == delimiter {
+                        out.push((open_end, middle_end, close_end));
+                    }
+                }
+                if out.len() > before {
+                    break;
+                }
+            }
+        }
+        let rc = Rc::new(out);
+        self.quote_memo.insert(key, rc.clone());
+        rc
     }
 
     /// Does `nt` derive some prefix of `input[pos..]`?
@@ -222,7 +320,7 @@ impl<'g> Parse<'g> {
             // Zero-width cycle through lookaheads: treat as no match.
             return false;
         }
-        let v = self.run(nt, pos, Mode::Prefix(nt));
+        let v = self.run(nt, pos, Mode::Prefix(nt), &mut Vec::new());
         self.pred_active.remove(&key);
         self.pred_memo.insert(key, v);
         v
@@ -292,6 +390,15 @@ impl<'g> Parse<'g> {
                 } else {
                     Rc::new(vec![pos])
                 }
+            }
+            Sym::Quote(q) => {
+                let mut ends: Vec<u32> = Vec::new();
+                for &(_, _, end) in self.quote_matches(q, pos as usize).iter() {
+                    if !ends.contains(&end) {
+                        ends.push(end);
+                    }
+                }
+                Rc::new(ends)
             }
         }
     }
@@ -370,9 +477,34 @@ impl<'g> Parse<'g> {
                     span: Span(pos as usize, c as usize),
                 }),
                 Sym::N(b) => out.extend(self.derive(b, pos as usize, c as usize)),
+                Sym::Quote(q) => {
+                    let quote = self.g.quotes[q as usize];
+                    let matches = self.quote_matches(q, pos as usize);
+                    if let Some(&(open_end, middle_end, _)) =
+                        matches.iter().find(|&&(_, _, end)| end == c)
+                    {
+                        let (open_end, middle_end) = (open_end as usize, middle_end as usize);
+                        out.extend(self.derive(quote.open, pos as usize, open_end));
+                        out.extend(self.derive(quote.middle, open_end, middle_end));
+                        out.extend(self.derive(quote.close, middle_end, c as usize));
+                    }
+                }
                 Sym::And(_) | Sym::Not(_) => {}
             }
             pos = c;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::delimiter_key;
+
+    #[test]
+    fn delimiter_key_normalizes_like_camxes() {
+        assert_eq!(delimiter_key(b"gy"), delimiter_key(b".GY. "));
+        assert_eq!(delimiter_key(b"xu'u"), delimiter_key(b"xuhu"));
+        assert_eq!(delimiter_key(b"dja,n"), delimiter_key(b"djan"));
+        assert_ne!(delimiter_key(b"gy"), delimiter_key(b"dy"));
     }
 }

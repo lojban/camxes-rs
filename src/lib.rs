@@ -15,12 +15,13 @@
 //! # Modules
 //! * [`peg`] — the PEG parser generator.
 //! * [`earley`] — an Earley engine that runs the same PEG grammar text.
-//! * [`grammars`] — embedded grammars: Loglan, Lojban syntax (camxes) and
+//! * [`grammars`] — embedded grammars: Lojban syntax (camxes) and
 //!   Lojban morphology.
 //! * [`syntax`] — whole-text Lojban syntax check with either engine.
 //! * [`morphology`] — engine-independent Lojban morphology (word split,
 //!   classes, selma'o, standard/obsolete dialect).
-//! * `cll` (feature `earley`) — vendored tergenzalvi CLL morphology.
+//! * `cll` (feature `earley`) — vendored tergenzalvi CLL morphology and
+//!   Chapter 21 grammar.
 
 #[cfg(feature = "earley")]
 pub mod cll;
@@ -29,3 +30,8 @@ pub mod grammars;
 pub mod morphology;
 pub mod peg;
 pub mod syntax;
+
+/// Compiles and runs the README's code examples as doctests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;

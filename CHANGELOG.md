@@ -35,13 +35,23 @@ with a major bump rather than claiming compatibility with the 1.x API.
   `tests/grammar_basics.rs` covers basic constructions (bridi, LE/KU, FA/BAI,
   tenses, NU/DU'U, POI/NOI/GOI, JE/.e/GIhA/GA, .i, lu/li'u, zo, numbers and
   MEX, vocatives, UI, lujvo/fu'ivla/cmevla in sentences, ...) and
-  ungrammatical texts. Limitation: `zoi`/`la'o` delimiters are not
-  back-referenced, so the PEG engine rejects `zoi` quotes and the Earley
-  engine accepts them without checking that the delimiters match.
+  ungrammatical texts.
+- Delimiter back-references in the Earley engine: ilmentufa-style rule
+  annotations `#: PUSH` / `#: PEEK-DIFF` / `#: POP-EQ` are compiled into a
+  quote symbol, so `zoi X. … .X` / `la'o X. … .X` is accepted only when the
+  closing word equals the opening one (case, pauses, commas ignored, `h` ≡
+  `'`) and the quote ends at the first such word (the quoted text never
+  contains the delimiter as a separate word). `zoi gy. hello .dy glico` is
+  rejected. `LOJBAN_GRAMMAR` carries the annotations on `zoi_open` /
+  `zoi_word` / `zoi_close`; the PEG front end accepts and ignores them (the
+  PEG engine still rejects `zoi`/`la'o` quotes because its greedy repetition
+  swallows the closing delimiter).
 - `cll` module (feature `earley`): vendored copy of tergenzalvi (commit
-  6eaea40, MIT OR Apache-2.0) providing the CLL morphology and cmavo lexicon,
+  e07f176, same author, included under this crate's MIT license) providing the CLL morphology and cmavo lexicon,
   so the crate has no git dependency and can be published.
 - `grammars::LOJBAN_MORPHOLOGY_GRAMMAR` (previously only in the example).
+- README rewritten to document both engines (layout, formalisms, usage,
+  limitations, performance); its code examples run as doctests.
 - Dictionary corpus test (`tests/dictionary_corpus.rs`) over all lensisku
   English headwords, excluding `wiki` page-title entries
   (`tests/data/lensisku-en-words.tsv.gz`, refreshed with
@@ -65,15 +75,32 @@ with a major bump rather than claiming compatibility with the 1.x API.
 - Private doc-only `ParseNode` alias in `earley`, redundant `use serde_json` /
   `use env_logger` imports, and the `[profile.release]` of the
   `loglan-wasm-app` workspace member (Cargo ignored it with a warning).
-- No public API was removed.
+- **Public API:** `grammars::LOGLAN_GRAMMAR` and the `loglan` example; this
+  crate is now Lojban-only (the `loglan` keyword is dropped as well).
+- The `loglan-wasm-app` workspace member (including its committed `pkg/`
+  build output), the `[workspace]` section and the GitHub Pages workflow
+  `.github/workflows/deploy-wasm-app.yml`.
+- Separate `src/cll/LICENSE-*.tergenzalvi` files: the crate has a single MIT
+  `LICENSE` at the repository root.
 
 ### Changed
-- Benchmarks use `std::hint::black_box` instead of `criterion::black_box`.
+- Benchmarks use `std::hint::black_box` instead of `criterion::black_box`
+  and measure the camxes Lojban grammar (both engines with `--features
+  earley`) instead of the removed Loglan grammar.
+- The vendored CLL Chapter 21 layer (`cll::grammar`) now cuts `zoi`/`la'o`
+  quotes out before morphology (CLL 19.10): the body is one opaque `FOREIGN`
+  lexeme, the quote closes at the first word equal to the delimiter, and an
+  unclosed or mismatched quote is a lexical gap (rejected).
 
 ### Packaging
+- Single MIT `LICENSE` file at the repository root, shipped in the package
+  (the README badge and license section link to it). The camxes grammar
+  attribution (ilmentufa / camxes.js, © Masato Hagiwara, MIT) is in the
+  README.
 - Test fixtures (`tests/data/`, corpus test, fetch script) stay in the
   repository but are excluded from the crates.io package.
 
 ### Compatibility
-- The PEG engine remains the default; existing APIs are unchanged and the
-  `earley` feature is off by default.
+- The PEG engine remains the default and the `earley` feature is off by
+  default. Apart from the removals listed above, existing APIs are
+  unchanged.

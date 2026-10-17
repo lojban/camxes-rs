@@ -1,6 +1,7 @@
 //! camxes-rs PEG text → CFG with lookahead symbols.
 
-use super::{ByteSet, EarleyGrammar, NtKind, Prod, Sym};
+use super::{ByteSet, EarleyGrammar, NtKind, Prod, Quote, Sym};
+use crate::peg::annotations::{strip_annotations, Annotation};
 use crate::peg::grammar::Peg;
 use crate::peg::rule::Rule;
 use std::collections::HashMap;
@@ -190,7 +191,8 @@ impl Builder {
 pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, CompileError> {
     // Reuse the PEG front end (bootstrap grammar + transformer) so both
     // engines accept identical grammar text.
-    let peg = Peg::new(start, grammar).map_err(|e| CompileError(e.to_string()))?;
+    let (plain, annotations) = strip_annotations(grammar);
+    let peg = Peg::new(start, &plain).map_err(|e| CompileError(e.to_string()))?;
     let mut b = Builder {
         names: Vec::new(),
         kinds: Vec::new(),
@@ -218,11 +220,13 @@ pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, Compi
             }
         }
     }
+    let quotes = compile_quotes(&mut b, &annotations)?;
     let mut by_lhs = vec![Vec::new(); b.names.len()];
     for (i, p) in b.prods.iter().enumerate() {
         by_lhs[p.lhs as usize].push(i as u32);
     }
-    let (nt_first, nt_nullable, prod_first, prod_nullable) = first_sets(b.names.len(), &b.prods);
+    let (nt_first, nt_nullable, prod_first, prod_nullable) =
+        first_sets(b.names.len(), &b.prods, &quotes);
     Ok(EarleyGrammar {
         start: start_id,
         names: b.names,
@@ -233,13 +237,89 @@ pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, Compi
         nt_nullable,
         prod_first,
         prod_nullable,
+        quotes,
     })
+}
+
+/// Replace each `PUSH-rule … POP-EQ-rule` stretch of a production by a
+/// [`Sym::Quote`]. `PEEK-DIFF` needs no symbol of its own: a quote ends at
+/// the first closing delimiter equal to the opening one, so no quoted word
+/// can equal it.
+fn compile_quotes(
+    b: &mut Builder,
+    annotations: &[(String, Annotation)],
+) -> Result<Vec<Quote>, CompileError> {
+    let rule_id = |b: &Builder, name: &str| {
+        b.named
+            .get(name)
+            .copied()
+            .ok_or_else(|| CompileError(format!("annotated rule `{name}` is not defined")))
+    };
+    let mut opens = Vec::new();
+    let mut closes = Vec::new();
+    for (name, annotation) in annotations {
+        match annotation {
+            Annotation::Push => opens.push(rule_id(b, name)?),
+            Annotation::PopEq => closes.push(rule_id(b, name)?),
+            Annotation::PeekDiff => {
+                rule_id(b, name)?;
+            }
+        }
+    }
+    let mut quotes = Vec::new();
+    let mut used_opens = Vec::new();
+    for pi in 0..b.prods.len() {
+        let mut idx = 0;
+        while idx < b.prods[pi].rhs.len() {
+            let Sym::N(open) = b.prods[pi].rhs[idx] else {
+                idx += 1;
+                continue;
+            };
+            if !opens.contains(&open) {
+                idx += 1;
+                continue;
+            }
+            let close_at = b.prods[pi].rhs[idx + 1..]
+                .iter()
+                .position(|sym| matches!(sym, Sym::N(c) if closes.contains(c)))
+                .map(|offset| idx + 1 + offset)
+                .ok_or_else(|| {
+                    CompileError(format!(
+                        "`#: PUSH` rule `{}` is not followed by a `#: POP-EQ` rule",
+                        b.names[open as usize]
+                    ))
+                })?;
+            let Sym::N(close) = b.prods[pi].rhs[close_at] else {
+                unreachable!("position matched a nonterminal")
+            };
+            let between: Vec<Sym> = b.prods[pi].rhs[idx + 1..close_at].to_vec();
+            let middle = b.helper(NtKind::Helper);
+            b.prod(middle, between);
+            let q = quotes.len() as u32;
+            quotes.push(Quote {
+                open,
+                middle,
+                close,
+            });
+            used_opens.push(open);
+            b.prods[pi].rhs.splice(idx..=close_at, [Sym::Quote(q)]);
+            idx += 1;
+        }
+    }
+    if let Some(&open) = opens.iter().find(|o| !used_opens.contains(o)) {
+        return Err(CompileError(format!(
+            "`#: PUSH` rule `{}` is never followed by a `#: POP-EQ` rule",
+            b.names[open as usize]
+        )));
+    }
+    Ok(quotes)
 }
 
 /// FIRST byte sets and (conservative) nullability by fixpoint iteration.
 fn first_sets(
     nt_count: usize,
     prods: &[Prod],
+    quotes: &[Quote],
 ) -> (Vec<ByteSet>, Vec<bool>, Vec<ByteSet>, Vec<bool>) {
     let mut nt_first = vec![ByteSet::EMPTY; nt_count];
     let mut nt_nullable = vec![false; nt_count];
@@ -260,6 +340,12 @@ fn first_sets(
                     Sym::N(n) => {
                         first.union(&nt_first[n as usize]);
                         nullable = nt_nullable[n as usize];
+                    }
+                    Sym::Quote(q) => {
+                        // A quote always consumes input (empty matches are
+                        // discarded by the recognizer).
+                        first.union(&nt_first[quotes[q as usize].open as usize]);
+                        nullable = false;
                     }
                     Sym::And(_) | Sym::Not(_) => {}
                 }

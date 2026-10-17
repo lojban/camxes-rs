@@ -36,33 +36,37 @@ pub struct LexemeResult {
     pub morph_notes: Vec<String>,
 }
 
+/// Ch.21 terminal of a ZOI / LA'O quoted body (CLL Ch.21 `anything`).
+///
+/// The pre-lex quote step ([`split_quote_regions`]) hands the whole foreign
+/// text between the two delimiters to the grammar as this single opaque
+/// lexeme, so the body never goes through Lojban morphology and can never be
+/// mistaken for the closing delimiter.
+pub const FOREIGN_TERMINAL: &str = "FOREIGN";
+
 /// Segment then assign Ch.21 terminals via cmavo lexicon + morph classes.
+///
+/// ZOI / LA'O quotes are cut out of the text first ([`split_quote_regions`]):
+/// the body is opaque foreign text and the closing delimiter must be the same
+/// word as the opening one (CLL 19.10, normalized like camxes: case, pauses
+/// and commas ignored, `h` ≡ `'`). An unclosed quote yields a `GAP` lexeme,
+/// so the syntax layer refuses it.
 pub fn lexeme_stream(input: &str) -> LexemeResult {
-    let seg = segment_stream(input);
     let lex = CmavoLexicon::global();
     let mut gaps = Vec::new();
-    let mut morph_notes = seg.ambiguity.clone();
+    let mut morph_notes = Vec::new();
+    let mut lexemes = Vec::new();
 
-    // Each group is lexemes from one stream token, plus whether the following
-    // boundary was explicit (space/`.` — do not re-fuse across those).
-    let mut groups: Vec<(Vec<Lexeme>, bool)> = Vec::new();
-    for tok in &seg.tokens {
-        if !tok.result.accepted {
-            gaps.push(format!(
-                "morph rejected {:?}: rejected_by={:?}",
-                tok.text, tok.result.rejected_by
-            ));
-            continue;
+    for region in split_quote_regions(input) {
+        match region {
+            Region::Lojban(text) => {
+                lexemes.extend(lex_lojban_region(text, lex, &mut gaps, &mut morph_notes));
+            }
+            Region::Quote(quote) => {
+                lexemes.extend(lex_quote(&quote, lex, &mut gaps, &mut morph_notes));
+            }
         }
-        let mut piece = Vec::new();
-        assign_token(tok, lex, &mut piece, &mut gaps, &mut morph_notes);
-        groups.push((piece, tok.explicit_boundary));
     }
-
-    // Re-fuse over-split atomic cmavo only inside continuous spans (`co`+`i` →
-    // `coi`), never across explicit whitespace/pause boundaries (`do`+`.i` ↛ `doi`).
-    let (lexemes, refuse_notes) = refuse_atomic_cmavo_grouped(groups, lex);
-    morph_notes.extend(refuse_notes);
 
     // Ch.21 non-formal word rule: omit BAhE / indicators from CFG terminals;
     // attached indicators remain in Lexeme metadata for the caller.
@@ -78,6 +82,260 @@ pub fn lexeme_stream(input: &str) -> LexemeResult {
         gaps,
         morph_notes,
     }
+}
+
+/// Morphology + selma'o assignment for a quote-free stretch of text.
+fn lex_lojban_region(
+    text: &str,
+    lex: &CmavoLexicon,
+    gaps: &mut Vec<String>,
+    morph_notes: &mut Vec<String>,
+) -> Vec<Lexeme> {
+    let seg = segment_stream(text);
+    morph_notes.extend(seg.ambiguity.iter().cloned());
+
+    // Each group is lexemes from one stream token, plus whether the following
+    // boundary was explicit (space/`.` — do not re-fuse across those).
+    let mut groups: Vec<(Vec<Lexeme>, bool)> = Vec::new();
+    for tok in &seg.tokens {
+        if !tok.result.accepted {
+            gaps.push(format!(
+                "morph rejected {:?}: rejected_by={:?}",
+                tok.text, tok.result.rejected_by
+            ));
+            continue;
+        }
+        let mut piece = Vec::new();
+        assign_token(tok, lex, &mut piece, gaps, morph_notes);
+        groups.push((piece, tok.explicit_boundary));
+    }
+
+    // Re-fuse over-split atomic cmavo only inside continuous spans (`co`+`i` →
+    // `coi`), never across explicit whitespace/pause boundaries (`do`+`.i` ↛ `doi`).
+    let (lexemes, refuse_notes) = refuse_atomic_cmavo_grouped(groups, lex);
+    morph_notes.extend(refuse_notes);
+    lexemes
+}
+
+/// A stretch of input text: ordinary Lojban, or one ZOI / LA'O quote.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Region<'a> {
+    /// Text lexed by the ordinary morphology pipeline.
+    Lojban(&'a str),
+    /// `zoi X. … .X` / `la'o X. … .X`.
+    Quote(QuoteRegion<'a>),
+}
+
+/// A ZOI / LA'O quote found by [`split_quote_regions`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuoteRegion<'a> {
+    /// The quote marker as written (`zoi`, `la'o`, `LA'O`, …).
+    pub marker: &'a str,
+    /// Opening delimiter word as written (pauses excluded), if any.
+    pub open: Option<&'a str>,
+    /// Foreign text between the delimiters (trimmed of surrounding pauses).
+    pub body: &'a str,
+    /// Closing delimiter as written; `None` when the quote is unclosed.
+    pub close: Option<&'a str>,
+}
+
+/// Normalized form used to compare quote markers and delimiters: lower case,
+/// commas dropped, `h` and typographic apostrophes folded into `'` (camxes
+/// treats `h` and `'` alike). Pauses are already excluded by tokenization.
+pub fn quote_word_key(word: &str) -> String {
+    word.chars()
+        .filter(|c| *c != ',')
+        .map(|c| match c.to_ascii_lowercase() {
+            'h' | '\u{2019}' | '\u{2018}' => '\'',
+            other => other,
+        })
+        .collect()
+}
+
+fn is_pause_or_space(c: char) -> bool {
+    c.is_whitespace() || c == '.'
+}
+
+/// Byte spans of pause/space-separated words.
+fn raw_words(input: &str) -> Vec<(usize, usize)> {
+    let mut words = Vec::new();
+    let mut start = None;
+    for (index, c) in input.char_indices() {
+        if is_pause_or_space(c) {
+            if let Some(s) = start.take() {
+                words.push((s, index));
+            }
+        } else if start.is_none() {
+            start = Some(index);
+        }
+    }
+    if let Some(s) = start {
+        words.push((s, input.len()));
+    }
+    words
+}
+
+/// Pre-lex quote step (CLL 19.10): cut ZOI / LA'O quotes out of the text.
+///
+/// A quote marker is a pause/space-separated word whose [`quote_word_key`] is
+/// `zoi` or `la'o`, unless it is itself quoted by a preceding `zo` or sits
+/// inside `lo'u … le'u`. The next word is the delimiter; the quote ends at the
+/// **first** later word with the same key, so the body can never contain the
+/// delimiter as a separate word.
+pub fn split_quote_regions(input: &str) -> Vec<Region<'_>> {
+    let words = raw_words(input);
+    let mut regions = Vec::new();
+    let mut lojban_start = 0;
+    let mut index = 0;
+    let mut zo_quoted = false;
+    let mut in_lohu = false;
+    while index < words.len() {
+        let (start, end) = words[index];
+        let key = quote_word_key(&input[start..end]);
+        if zo_quoted {
+            zo_quoted = false;
+            index += 1;
+            continue;
+        }
+        if in_lohu {
+            in_lohu = key != "le'u";
+            index += 1;
+            continue;
+        }
+        match key.as_str() {
+            "zo" => zo_quoted = true,
+            "lo'u" => in_lohu = true,
+            "zoi" | "la'o" => {
+                if lojban_start < start {
+                    regions.push(Region::Lojban(&input[lojban_start..start]));
+                }
+                let marker = &input[start..end];
+                let Some(&(open_start, open_end)) = words.get(index + 1) else {
+                    regions.push(Region::Quote(QuoteRegion {
+                        marker,
+                        open: None,
+                        body: "",
+                        close: None,
+                    }));
+                    return regions;
+                };
+                let delimiter = quote_word_key(&input[open_start..open_end]);
+                let close = words[index + 2..]
+                    .iter()
+                    .position(|&(s, e)| quote_word_key(&input[s..e]) == delimiter)
+                    .map(|offset| index + 2 + offset);
+                let body_end = close.map_or(input.len(), |c| words[c].0);
+                let body = input[open_end..body_end].trim_matches(is_pause_or_space);
+                regions.push(Region::Quote(QuoteRegion {
+                    marker,
+                    open: Some(&input[open_start..open_end]),
+                    body,
+                    close: close.map(|c| &input[words[c].0..words[c].1]),
+                }));
+                let Some(close) = close else {
+                    return regions;
+                };
+                lojban_start = words[close].1;
+                index = close + 1;
+                continue;
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    if lojban_start < input.len()
+        && !input[lojban_start..]
+            .trim_matches(is_pause_or_space)
+            .is_empty()
+    {
+        regions.push(Region::Lojban(&input[lojban_start..]));
+    }
+    regions
+}
+
+fn plain_lexeme(surface: &str, terminal: &str, note: Option<String>) -> Lexeme {
+    Lexeme {
+        surface: surface.to_string(),
+        terminal: terminal.to_string(),
+        note,
+        attached_indicators: vec![],
+        attached_emphasis: vec![],
+    }
+}
+
+/// Lexemes for one quote: `ZOI`, delimiter, [`FOREIGN_TERMINAL`] body,
+/// delimiter. Problems (no delimiter, non-word delimiter, unclosed quote)
+/// become `GAP` lexemes so the syntax layer refuses the text.
+fn lex_quote(
+    quote: &QuoteRegion<'_>,
+    lex: &CmavoLexicon,
+    gaps: &mut Vec<String>,
+    notes: &mut Vec<String>,
+) -> Vec<Lexeme> {
+    let marker = if quote_word_key(quote.marker) == "zoi" {
+        "zoi"
+    } else {
+        "la'o"
+    };
+    let mut out = vec![plain_lexeme(
+        marker,
+        lex.selmaho(marker).unwrap_or("ZOI"),
+        None,
+    )];
+    let Some(open) = quote.open else {
+        gaps.push(format!("{marker} without delimiter word"));
+        out.push(plain_lexeme(
+            "",
+            "GAP",
+            Some("ZOI: missing delimiter".into()),
+        ));
+        return out;
+    };
+    let mut word_gaps = Vec::new();
+    let delimiter = lex_lojban_region(open, lex, &mut word_gaps, notes);
+    let delimiter = match (delimiter.as_slice(), word_gaps.is_empty()) {
+        ([word], true) if word.terminal != "GAP" && word.terminal != "UNKNOWN_CMAVO" => {
+            word.clone()
+        }
+        _ => {
+            gaps.push(format!(
+                "{marker} delimiter {open:?} is not a single Lojban word"
+            ));
+            gaps.extend(word_gaps);
+            plain_lexeme(
+                open,
+                "GAP",
+                Some("ZOI: delimiter is not one Lojban word".into()),
+            )
+        }
+    };
+    out.push(delimiter.clone());
+    match quote.close {
+        Some(_) => {
+            notes.push(format!(
+                "CLL 19.10 {marker}: quote closed by matching delimiter {:?}",
+                quote_word_key(open)
+            ));
+            out.push(plain_lexeme(
+                quote.body,
+                FOREIGN_TERMINAL,
+                Some("foreign text".into()),
+            ));
+            out.push(delimiter);
+        }
+        None => {
+            gaps.push(format!(
+                "{marker} quote never closed by delimiter {:?}",
+                quote_word_key(open)
+            ));
+            out.push(plain_lexeme(
+                quote.body,
+                "GAP",
+                Some("ZOI: unclosed quote".into()),
+            ));
+        }
+    }
+    out
 }
 
 fn is_indicator_selmaho(sm: &str) -> bool {
@@ -216,32 +474,20 @@ fn apply_word_layer(raw: Vec<Lexeme>) -> (Vec<Lexeme>, Vec<String>) {
         }
 
         if term == "ZOI" {
-            // ZOI any-word anything any-word — keep delim + body + close intact.
+            // ZOI any-word anything any-word: the pre-lex quote step already
+            // produced exactly delimiter + FOREIGN body + delimiter (or a GAP).
             push_with_emphasis(&mut out, &raw[lexeme_index], &mut pending_emphasis);
             seen_content = true;
-            lexeme_index += 1;
-            if lexeme_index >= raw.len() {
-                notes.push("DERIVED Ch.6/19 magic: ZOI without delimiter".into());
-                continue;
-            }
-            let delim = raw[lexeme_index].surface.clone();
+            let quote_end = (lexeme_index + 4).min(raw.len());
             notes.push(format!(
-                "DERIVED Ch.6/19 magic: ZOI opaque region delim={delim:?} (word-layer bypass)"
+                "DERIVED Ch.6/19 magic: ZOI opaque region {:?} (word-layer bypass)",
+                raw[lexeme_index + 1..quote_end]
+                    .iter()
+                    .map(|lexeme| lexeme.surface.as_str())
+                    .collect::<Vec<_>>()
             ));
-            out.push(raw[lexeme_index].clone()); // open delimiter
-            lexeme_index += 1;
-            while lexeme_index < raw.len() && raw[lexeme_index].surface != delim {
-                out.push(raw[lexeme_index].clone());
-                lexeme_index += 1;
-            }
-            if lexeme_index < raw.len() && raw[lexeme_index].surface == delim {
-                out.push(raw[lexeme_index].clone()); // close delimiter
-                lexeme_index += 1;
-            } else {
-                notes.push(format!(
-                    "DERIVED Ch.6/19 magic: ZOI unclosed delim {delim:?} (GAP partial)"
-                ));
-            }
+            out.extend(raw[lexeme_index + 1..quote_end].iter().cloned());
+            lexeme_index = quote_end;
             continue;
         }
 
@@ -679,9 +925,78 @@ mod tests {
 
     #[test]
     fn zoi_body_ui_not_stripped() {
-        // Delimiter `gy` / body may include UI; word-layer must not eat them.
+        // Body may look like UI; it is opaque foreign text, never stripped.
         let t = terminals_only("zoi gy. .ui .gy.");
-        assert_eq!(t, vec!["ZOI", "BY", "UI", "BY"], "{t:?}");
+        assert_eq!(t, vec!["ZOI", "BY", "FOREIGN", "BY"], "{t:?}");
+    }
+
+    fn quote(input: &str) -> QuoteRegion<'_> {
+        split_quote_regions(input)
+            .into_iter()
+            .find_map(|region| match region {
+                Region::Quote(quote) => Some(quote),
+                Region::Lojban(_) => None,
+            })
+            .expect("quote region")
+    }
+
+    #[test]
+    fn zoi_closes_on_matching_delimiter_only() {
+        let q = quote("mi cusku zoi gy. hello .dy world .gy. cu glico");
+        assert_eq!(q.body, "hello .dy world");
+        assert_eq!(q.close, Some("gy"));
+        let t = terminals_only("zoi gy. hello world .gy cu glico");
+        assert_eq!(
+            t,
+            vec!["ZOI", "BY", "FOREIGN", "BY", "CU", "BRIVLA"],
+            "{t:?}"
+        );
+    }
+
+    #[test]
+    fn zoi_delimiter_normalized_like_camxes() {
+        // Case, commas and `h`/`'` spelling do not matter.
+        assert_eq!(quote("zoi GY. hello .gy").close, Some("gy"));
+        assert_eq!(quote("la'o .djan. John .DJAN.").close, Some("DJAN"));
+        assert_eq!(quote("zoi xu'u. a b .xuhu").close, Some("xuhu"));
+    }
+
+    #[test]
+    fn zoi_body_ends_at_first_delimiter() {
+        // The body can never contain the delimiter as a separate word.
+        let q = quote("zoi gy. mi .gy. klama .gy");
+        assert_eq!(q.body, "mi");
+        let t = terminals_only("zoi gy. mi .gy. klama .gy");
+        assert_eq!(t[..4], ["ZOI", "BY", "FOREIGN", "BY"], "{t:?}");
+        assert_eq!(t[4], "BRIVLA", "{t:?}");
+    }
+
+    #[test]
+    fn zoi_unclosed_or_mismatched_is_gap() {
+        for input in ["zoi gy. hello .dy glico", "zoi gy. hello", "zoi"] {
+            let t = terminals_only(input);
+            assert!(t.iter().any(|t| t == "GAP"), "{input}: {t:?}");
+        }
+    }
+
+    #[test]
+    fn la_o_quotes_names() {
+        let t = terminals_only("la'o dy. New York .dy");
+        assert_eq!(t, vec!["ZOI", "BY", "FOREIGN", "BY"], "{t:?}");
+        assert_eq!(
+            lexeme_stream("la'o dy. New York .dy").lexemes[2].surface,
+            "New York"
+        );
+    }
+
+    #[test]
+    fn zo_and_lohu_protect_quote_markers() {
+        assert!(split_quote_regions("zo zoi cmavo")
+            .iter()
+            .all(|r| matches!(r, Region::Lojban(_))));
+        assert!(split_quote_regions("lo'u zoi gy le'u")
+            .iter()
+            .all(|r| matches!(r, Region::Lojban(_))));
     }
 
     #[test]

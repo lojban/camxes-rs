@@ -18,7 +18,10 @@ pub mod parse;
 
 pub use cmavo::{map_selmaho_subtype, normalize_cmavo, CmavoLexicon};
 pub use ebnf::{compile_ebnf, CompileStats};
-pub use lexeme::{lexeme_stream, terminals_only, Lexeme, LexemeResult};
+pub use lexeme::{
+    lexeme_stream, quote_word_key, split_quote_regions, terminals_only, Lexeme, LexemeResult,
+    QuoteRegion, Region, FOREIGN_TERMINAL,
+};
 pub use parse::{
     cll21_grammar, cll21_stats, lexeme, parse_as, parse_as_with_tree, parse_text, GrammarResult,
 };

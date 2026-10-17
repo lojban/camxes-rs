@@ -18,6 +18,14 @@
 //! reproduces the PEG's own derivation, while the chart still knows every
 //! other derivation (see [`EarleyGrammar::parse_complete`]).
 //!
+//! * Back-references: rules annotated ilmentufa-style with `#: PUSH`
+//!   (opening delimiter), `#: PEEK-DIFF` (quoted word) and `#: POP-EQ`
+//!   (closing delimiter) are compiled into a quote symbol. A sequence
+//!   `open … close` then matches only when the closing delimiter is the same
+//!   word as the opening one (ASCII case, pauses `.`, commas and spaces
+//!   ignored; `h` ≡ `'`), and it ends at the **first** such word, so no
+//!   quoted word equals the delimiter. This is how camxes' `zoi`/`la'o` work.
+//!
 //! The output uses the same [`ParseResult`] / [`ParseNode`](crate::peg::parsing::ParseNode) types as the PEG
 //! engine. Nodes are emitted for named rules and for terminals; helper
 //! nonterminals introduced by the compiler are flattened away.
@@ -68,6 +76,19 @@ pub(crate) enum Sym {
     And(u32),
     /// Negative lookahead `!X` (zero width).
     Not(u32),
+    /// Delimited quote `open middle close` with matching delimiters
+    /// (index into [`EarleyGrammar::quotes`]).
+    Quote(u32),
+}
+
+/// A `#: PUSH` … `#: POP-EQ` span compiled from the grammar: `open`, then
+/// `middle` (the symbols between them, as a helper nonterminal), then
+/// `close`, whose text must equal the text matched by `open`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Quote {
+    pub(crate) open: u32,
+    pub(crate) middle: u32,
+    pub(crate) close: u32,
 }
 
 /// How a nonterminal shows up in the output tree.
@@ -105,6 +126,8 @@ pub struct EarleyGrammar {
     /// Same two facts per production, used to filter predictions.
     pub(crate) prod_first: Vec<ByteSet>,
     pub(crate) prod_nullable: Vec<bool>,
+    /// Delimiter-matching quotes referenced by [`Sym::Quote`].
+    pub(crate) quotes: Vec<Quote>,
 }
 
 impl EarleyGrammar {
@@ -268,6 +291,42 @@ mod tests {
     #[test]
     fn missing_rule_is_a_compile_error() {
         assert!(EarleyGrammar::new("s", "s <- 'a' undefined / 'b'").is_err());
+    }
+
+    const QUOTE_GRAMMAR: &str = r#"
+    text <- (quote / word) (' '+ (quote / word))* !.
+    quote <- 'Q' ' ' open ' ' (body ' ')* close
+    open <- [a-z]+ #: PUSH
+    body <- [a-z]+ #: PEEK-DIFF
+    close <- [a-z]+ #: POP-EQ
+    word <- [a-z]+
+    "#;
+
+    #[test]
+    fn quote_needs_matching_delimiters() {
+        let g = EarleyGrammar::new("text", QUOTE_GRAMMAR).unwrap();
+        let accepts = |s: &str| g.parse_complete(s).2.is_ok();
+        assert!(accepts("Q gy hello gy"));
+        assert!(accepts("Q gy hello world gy after"));
+        assert!(accepts("Q gy gy"));
+        // Without back-references `Q gy hello dy` would parse (close = dy).
+        assert!(!accepts("Q gy hello dy"));
+        assert!(!accepts("Q gy hello"));
+        // The quote ends at the first `gy`: `x gy` follows outside it.
+        let r = g.parse_complete("Q gy a gy x gy");
+        let nodes = r.2.as_ref().as_ref().unwrap();
+        assert!(shape(nodes).contains("close[7-9]"), "{}", shape(nodes));
+    }
+
+    #[test]
+    fn peg_engine_ignores_annotations() {
+        assert!(Peg::new("text", QUOTE_GRAMMAR).is_ok());
+    }
+
+    #[test]
+    fn push_without_pop_is_a_compile_error() {
+        let g = "s <- a b\na <- 'x' #: PUSH\nb <- 'y'";
+        assert!(EarleyGrammar::new("s", g).is_err());
     }
 
     #[test]

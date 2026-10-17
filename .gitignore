@@ -4,7 +4,5 @@
 *.txt
 .env
 
-# Ignore wasm-pack output directory specifically within the app
-/loglan-wasm-app/pkg
 
 .specstory/**
