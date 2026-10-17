@@ -59,6 +59,11 @@ impl Chart {
 }
 
 type Ends = Rc<Vec<u32>>;
+/// Preference memos `(nt_pref, seq_pref)` of one extraction mode.
+type PrefMemos = (
+    FxHashMap<(u32, u32), Ends>,
+    FxHashMap<(u32, u32, u32), Ends>,
+);
 /// Matches of one quote from a position: `(open end, middle end, close end)`,
 /// preferred first.
 type QuoteMatches = Rc<Vec<(u32, u32, u32)>>;
@@ -74,11 +79,17 @@ pub(super) struct Parse<'g> {
     nt_pref: FxHashMap<(u32, u32), Ends>,
     seq_pref: FxHashMap<(u32, u32, u32), Ends>,
     pref_active: FxHashSet<(u32, u32)>,
+    /// Preference memos of the other mode (swapped in by `full_mode`).
+    other_pref: PrefMemos,
     /// All end positions `(nonterminal, position)` → ascending ends, used by
     /// quotes (sub-recognitions also record into `done`).
     all_ends: FxHashMap<(u32, u32), Ends>,
     ends_active: FxHashSet<(u32, u32)>,
     quote_memo: FxHashMap<(u32, u32), QuoteMatches>,
+    /// PEG mode: every nonterminal keeps only its most preferred end, so the
+    /// extracted derivation is the one a PEG would build (no backtracking
+    /// into a nonterminal that already matched).
+    peg_mode: bool,
     furthest: usize,
 }
 
@@ -102,11 +113,38 @@ impl<'g> Parse<'g> {
             nt_pref: FxHashMap::default(),
             seq_pref: FxHashMap::default(),
             pref_active: FxHashSet::default(),
+            other_pref: Default::default(),
             all_ends: FxHashMap::default(),
             ends_active: FxHashSet::default(),
             quote_memo: FxHashMap::default(),
+            peg_mode: false,
             furthest: 0,
         }
+    }
+
+    /// Switch derivation extraction to PEG mode (see `peg_mode`). Call
+    /// before any extraction.
+    pub(super) fn set_peg_mode(&mut self) {
+        self.peg_mode = true;
+    }
+
+    /// Run `f` with PEG mode off (all ends of every nonterminal), keeping
+    /// each mode's preference memos apart.
+    fn full_mode<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        if !self.peg_mode {
+            return f(self);
+        }
+        self.swap_pref();
+        self.peg_mode = false;
+        let r = f(self);
+        self.peg_mode = true;
+        self.swap_pref();
+        r
+    }
+
+    fn swap_pref(&mut self) {
+        std::mem::swap(&mut self.nt_pref, &mut self.other_pref.0);
+        std::mem::swap(&mut self.seq_pref, &mut self.other_pref.1);
     }
 
     pub(super) fn furthest(&self) -> usize {
@@ -347,6 +385,12 @@ impl<'g> Parse<'g> {
                     out.push(e);
                 }
             }
+            if self.peg_mode && !out.is_empty() {
+                break;
+            }
+        }
+        if self.peg_mode {
+            out.truncate(1);
         }
         self.pref_active.remove(&(nt, pos));
         let rc = Rc::new(out);
@@ -474,7 +518,11 @@ impl<'g> Parse<'g> {
                     {
                         let (open_end, middle_end) = (open_end as usize, middle_end as usize);
                         out.extend(self.derive(quote.open, pos as usize, open_end));
-                        out.extend(self.derive(quote.middle, open_end, middle_end));
+                        // The quoted words end where the matching delimiter
+                        // starts, not at the middle's greedy PEG end.
+                        out.extend(
+                            self.full_mode(|p| p.derive(quote.middle, open_end, middle_end)),
+                        );
                         out.extend(self.derive(quote.close, middle_end, c as usize));
                     }
                 }

@@ -147,8 +147,11 @@ same text, and compiles it to a CFG:
   reach; ε-completion is handled dynamically (Aycock–Horspool).
 
 The chart holds every derivation. `parse` extracts the **PEG-preferred** one
-(earlier alternatives first, then longer repetitions), which for grammars
-written as PEGs usually reproduces the PEG's own tree; `parse_complete`
+(earlier alternatives first, greedy repetitions, and each nonterminal keeps
+only its preferred match, i.e. no backtracking into a nonterminal that
+already matched), which reproduces the PEG's own tree except where a
+lookahead is decided differently (`&e`/`!e` ask whether `e` derives *some*
+prefix); `parse_complete`
 returns the most preferred derivation that covers the whole input, which
 also exists where the PEG committed to a choice that later fails. So the
 Earley engine accepts a superset of what the PEG engine accepts.
@@ -355,9 +358,11 @@ or `RUST_LOG=debug cargo run --example cmaxes-test`.
   "the quote ends at the first matching word" rather than as a separate
   check; the PEG engine checks it directly. Both require the PUSH and
   POP-EQ rules in the same rule body.
-* **Trees differ:** the Earley tree is the derivation it picked; tree shapes
-  are not guaranteed to match the PEG's (the parity test compares word
-  split, classes and selma'o only).
+* **Trees:** when the PEG-preferred derivation covers the text the Earley
+  tree equals the PEG tree (all 1,678 texts both engines accept in the
+  `dwe` example corpus give identical trees); when only `parse_complete`
+  succeeds it is the derivation the Earley engine picked. The parity test
+  compares word split, classes and selma'o only.
 * **Dictionary labels:** 226 headwords labelled obsolete in lensisku have a
   standard form (e.g. `matriocka`) and one standard-labelled word
   (`gudjrati`) is obsolete by rule; the parity file records these as
@@ -374,16 +379,17 @@ lensisku headwords with `examples/morphology_corpus.rs`:
 
 | Workload | PEG | Earley |
 |----------|-----|--------|
-| `morphology::analyze`, all headwords | 1,315 words/s | 1,576 words/s |
-| bare `LOJBAN_MORPHOLOGY_GRAMMAR` parse (`--raw`) | 1,364 inputs/s | 1,663 inputs/s |
+| `morphology::analyze`, all headwords | 1,244 words/s | 1,515 words/s |
+| bare `LOJBAN_MORPHOLOGY_GRAMMAR` parse (`--raw`) | 1,340 inputs/s | 1,677 inputs/s |
 
 Whole-text syntax with `LOJBAN_GRAMMAR` (`cargo bench --features earley`):
 
 | Benchmark | PEG | Earley |
 |-----------|-----|--------|
-| compile the grammar (`Peg::new` / `EarleyGrammar::new`) | 189 ms | 219 ms |
-| `mi prami do` (11 bytes) | 4.4 ms | 1.7 ms |
-| `mi prami do .i do prami mi ` × 20 (540 bytes) | 96 ms | 217 ms |
+| compile the grammar (`Peg::new` / `EarleyGrammar::new`) | 196 ms | 221 ms |
+| `mi prami do` (11 bytes) | 4.5 ms | 1.6 ms |
+| `mi prami do .i do prami mi ` × 20 (540 bytes) | 102 ms | 222 ms |
+| 1,699 example sentences (`dwe` corpus, `syntax::parse`) | 54–66 rows/s | 82–89 rows/s |
 
 Compile a grammar once and reuse it (`syntax` caches both). The Earley
 engine pays for lookahead sub-recognitions on long texts; the slowest

@@ -38,7 +38,9 @@ impl Rule {
                 let matched = if pattern.len() == 1 {
                     position < input.len() && input.as_bytes()[position] == pattern.as_bytes()[0]
                 } else {
-                    input[position..].starts_with(pattern)
+                    // Byte comparison: `position` may sit inside a multi-byte
+                    // character after `.` consumed one byte.
+                    input.as_bytes()[position..].starts_with(pattern.as_bytes())
                 };
                 if matched {
                     let len = pattern.len();
@@ -249,7 +251,7 @@ impl Rule {
             Rule::Group(expr) => expr.parse(peg, input, position, depth),
 
             Rule::Range(start, end) => {
-                if position < input.len() {
+                if position < input.len() && input.is_char_boundary(position) {
                     let c = input[position..].chars().next().unwrap();
                     if start.chars().next().unwrap() <= c && c <= end.chars().next().unwrap() {
                         ParseResult(
@@ -291,7 +293,7 @@ impl Rule {
                 syms.sort_by_key(|s| std::cmp::Reverse(s.len()));
                 let matched = syms
                     .into_iter()
-                    .find(|s| input[position..].starts_with(s.as_str()));
+                    .find(|s| input.as_bytes()[position..].starts_with(s.as_bytes()));
                 if let Some(symbol) = matched {
                     let len = symbol.len();
                     ParseResult(

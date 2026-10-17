@@ -69,6 +69,15 @@ with a major bump rather than claiming compatibility with the 1.x API.
   runs it with `--features earley`.
 
 ### Fixed
+- The PEG engine panicked on non-ASCII input (e.g. a Cyrillic letter in a
+  Lojban text) when `.` had consumed one byte of a multi-byte character;
+  literals and classes now compare bytes and ranges require a character
+  boundary.
+- The Earley engine's preferred derivation (`EarleyGrammar::parse`) could
+  backtrack into a nonterminal that had already matched (e.g. take `ca` as
+  a sumti tag in `ca ca'o carvi` where camxes reads `ca ca'o` as one tense),
+  so its tree differed from the PEG's. Each nonterminal now keeps only its
+  preferred match, as in a PEG.
 - `Peg::new` panicked on grammar text with leading whitespace.
 - Clippy warnings in the PEG engine and the `cmaxes-test` example.
 

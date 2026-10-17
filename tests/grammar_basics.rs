@@ -91,6 +91,7 @@ const CASES: &[(&str, &str, Expect)] = &[
     ("POI without bridi", "mi klama poi", Bad),
     ("GI without GA", "gi mi klama", Bad),
     ("non-Lojban word", "mi klamq", Bad),
+    ("non-ASCII letter", "mi klama lу nu", Bad),
     ("zoi mismatched delimiter", "zoi gy. hello .dy glico", Bad),
     (
         "la'o mismatched delimiter",

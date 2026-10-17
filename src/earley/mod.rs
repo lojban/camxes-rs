@@ -13,9 +13,12 @@
 //!
 //! Recognition is a standard Earley chart with ε-completion handling (the
 //! Aycock–Horspool refinement done dynamically). From the chart, a single
-//! derivation is selected with PEG-style preferences: earlier alternatives
-//! first, then longer repetitions. For grammars written as PEGs this usually
-//! reproduces the PEG's own derivation, while the chart still knows every
+//! derivation is selected with PEG semantics: earlier alternatives first,
+//! greedy repetitions, and each nonterminal keeps only its preferred match
+//! (no backtracking into a nonterminal that already matched). So
+//! [`EarleyGrammar::parse`] reproduces the PEG's own derivation, except where
+//! a lookahead is decided differently (`&X`/`!X` ask whether `X` derives
+//! *some* prefix, not what the PEG would match). The chart still knows every
 //! other derivation (see [`EarleyGrammar::parse_complete`]).
 //!
 //! * Back-references: rules annotated ilmentufa-style with `#: PUSH`
@@ -151,6 +154,7 @@ impl EarleyGrammar {
     /// PEG-preferred derivation. `ParseResult.1` is the end of that match.
     pub fn parse(&self, input: &str) -> ParseResult {
         let mut chart = recognize::Parse::new(self, input.as_bytes());
+        chart.set_peg_mode();
         chart.run_main();
         match chart.preferred_end(self.start, 0) {
             Some(end) => {
@@ -181,6 +185,7 @@ impl EarleyGrammar {
     /// of `input`, computed from a single chart.
     pub fn analyze_ends(&self, input: &str) -> (Option<usize>, bool) {
         let mut chart = recognize::Parse::new(self, input.as_bytes());
+        chart.set_peg_mode();
         chart.run_main();
         (
             chart.preferred_end(self.start, 0),
@@ -275,6 +280,25 @@ mod tests {
             g,
             &["hello world ", "hello", "helloworld", "abc hello", ""],
         );
+    }
+
+    #[test]
+    fn no_backtracking_into_a_matched_nonterminal() {
+        // PEG: `x` greedily matches "aa", the first alternative then fails
+        // and the PEG does not retry `x` with "a"; the second one matches.
+        // The preferred Earley derivation must make the same choice.
+        let g = r#"
+        s <- x 'a' 'b' / 'a' 'a' 'b' 'c'?
+        x <- 'a' 'a'?
+        "#;
+        same_as_peg("s", g, &["aab", "aaab", "aabc", "ab"]);
+    }
+
+    #[test]
+    fn non_ascii_input_does_not_panic() {
+        // Grammar text stays ASCII; the input has multi-byte characters.
+        let g = "s <- . 'b' / [a-z]+ / 'x'";
+        same_as_peg("s", g, &["пb", "п", "abc", "xп", "ж"]);
     }
 
     #[test]
