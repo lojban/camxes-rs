@@ -19,11 +19,69 @@ impl fmt::Display for CompileError {
 
 impl std::error::Error for CompileError {}
 
+/// Split the code points `lo..=hi` into sequences of UTF-8 byte ranges
+/// (each sequence matches the encodings of a contiguous sub-range).
+fn utf8_sequences(lo: u32, hi: u32, out: &mut Vec<Vec<(u8, u8)>>) {
+    if lo > hi {
+        return;
+    }
+    // Surrogates have no encoding.
+    if lo <= 0xDFFF && hi >= 0xD800 {
+        if lo < 0xD800 {
+            utf8_sequences(lo, 0xD7FF, out);
+        }
+        if hi > 0xDFFF {
+            utf8_sequences(0xE000, hi, out);
+        }
+        return;
+    }
+    // Same encoded length at both ends.
+    for max in [0x7F, 0x7FF, 0xFFFF] {
+        if lo <= max && max < hi {
+            utf8_sequences(lo, max, out);
+            utf8_sequences(max + 1, hi, out);
+            return;
+        }
+    }
+    if hi <= 0x7F {
+        out.push(vec![(lo as u8, hi as u8)]);
+        return;
+    }
+    // Continuation bytes must span their full range except in the last
+    // differing position.
+    for i in 1..4 {
+        let m = (1u32 << (6 * i)) - 1;
+        if lo & !m != hi & !m {
+            if lo & m != 0 {
+                utf8_sequences(lo, lo | m, out);
+                utf8_sequences((lo | m) + 1, hi, out);
+                return;
+            }
+            if hi & m != m {
+                utf8_sequences(lo, (hi & !m) - 1, out);
+                utf8_sequences(hi & !m, hi, out);
+                return;
+            }
+        }
+    }
+    let (mut a, mut b) = ([0u8; 4], [0u8; 4]);
+    let (Some(lo), Some(hi)) = (char::from_u32(lo), char::from_u32(hi)) else {
+        return;
+    };
+    let (a, b) = (
+        lo.encode_utf8(&mut a).as_bytes(),
+        hi.encode_utf8(&mut b).as_bytes(),
+    );
+    out.push(a.iter().zip(b).map(|(&x, &y)| (x, y)).collect());
+}
+
 struct Builder {
     names: Vec<String>,
     kinds: Vec<NtKind>,
     prods: Vec<Prod>,
     named: HashMap<String, u32>,
+    /// Helpers matching one character in a code-point range (`.`, ranges).
+    char_ranges: HashMap<(u32, u32), u32>,
 }
 
 impl Builder {
@@ -68,6 +126,41 @@ impl Builder {
         h
     }
 
+    /// One character (not byte) in `lo..=hi`, like the PEG engine's `.` and
+    /// `[a-z]`: an ASCII range is a byte set, anything else a helper whose
+    /// productions are the UTF-8 byte-range sequences of the range.
+    fn char_range(&mut self, lo: char, hi: char) -> Sym {
+        if hi.is_ascii() || lo > hi {
+            let mut set = ByteSet::EMPTY;
+            for x in lo as u32..=hi as u32 {
+                set.insert(x as u8);
+            }
+            return Sym::T(set);
+        }
+        let key = (lo as u32, hi as u32);
+        if let Some(&h) = self.char_ranges.get(&key) {
+            return Sym::N(h);
+        }
+        let h = self.helper(NtKind::Literal);
+        let mut seqs = Vec::new();
+        utf8_sequences(lo as u32, hi as u32, &mut seqs);
+        for seq in seqs {
+            let rhs = seq
+                .into_iter()
+                .map(|(a, b)| {
+                    let mut set = ByteSet::EMPTY;
+                    for x in a..=b {
+                        set.insert(x);
+                    }
+                    Sym::T(set)
+                })
+                .collect();
+            self.prod(h, rhs);
+        }
+        self.char_ranges.insert(key, h);
+        Sym::N(h)
+    }
+
     /// Right-hand-side symbols for a rule used inside a sequence.
     fn seq_syms(&mut self, rule: &Rule, out: &mut Vec<Sym>) {
         match rule {
@@ -96,7 +189,7 @@ impl Builder {
     fn sym(&mut self, rule: &Rule) -> Sym {
         match rule {
             Rule::NonTerminal(name) => Sym::N(self.named(name)),
-            Rule::Any => Sym::T(ByteSet::ALL),
+            Rule::Any => self.char_range('\0', char::MAX),
             Rule::Literal(s) => {
                 let b = s.as_bytes();
                 if b.len() == 1 {
@@ -107,16 +200,10 @@ impl Builder {
                     Sym::N(self.bytes_nt(vec![b.to_vec()], NtKind::Literal))
                 }
             }
-            Rule::Range(a, b) => {
-                let (a, b) = (a.as_bytes(), b.as_bytes());
-                let mut set = ByteSet::EMPTY;
-                if let (Some(&lo), Some(&hi)) = (a.first(), b.first()) {
-                    for x in lo..=hi {
-                        set.insert(x);
-                    }
-                }
-                Sym::T(set)
-            }
+            Rule::Range(a, b) => match (a.chars().next(), b.chars().next()) {
+                (Some(lo), Some(hi)) => self.char_range(lo, hi),
+                _ => Sym::T(ByteSet::EMPTY),
+            },
             Rule::Class(members) => {
                 if members.iter().all(|m| m.len() == 1) {
                     let mut set = ByteSet::EMPTY;
@@ -126,8 +213,11 @@ impl Builder {
                     Sym::T(set)
                 } else {
                     // PEG tries longer members first.
-                    let mut alts: Vec<Vec<u8>> =
-                        members.iter().map(|m| m.as_bytes().to_vec()).collect();
+                    let mut alts: Vec<Vec<u8>> = members
+                        .iter()
+                        .filter(|m| !m.is_empty())
+                        .map(|m| m.as_bytes().to_vec())
+                        .collect();
                     alts.sort_by(|x, y| y.len().cmp(&x.len()).then(x.cmp(y)));
                     Sym::N(self.bytes_nt(alts, NtKind::Literal))
                 }
@@ -198,6 +288,7 @@ pub(super) fn compile(start: &str, grammar: &str) -> Result<EarleyGrammar, Compi
         kinds: Vec::new(),
         prods: Vec::new(),
         named: HashMap::new(),
+        char_ranges: HashMap::new(),
     };
     let start_id = b.named(start);
     let mut rule_names: Vec<&String> = peg.rules.keys().collect();
@@ -366,4 +457,46 @@ fn first_sets(
         }
     }
     (nt_first, nt_nullable, prod_first, prod_nullable)
+}
+
+#[cfg(test)]
+mod utf8_tests {
+    use super::utf8_sequences;
+
+    /// Every code point in a range matches exactly one sequence, and
+    /// nothing outside does.
+    #[test]
+    fn utf8_sequences_cover_ranges_exactly() {
+        let ranges = [
+            (0u32, 0x10FFFF),
+            (0x430, 0x44F),
+            (0x7F, 0x80),
+            (0x7FF, 0x800),
+            (0xD7FF, 0xE000),
+            (0xFFFF, 0x10000),
+            (0x1F600, 0x1F64F),
+            (0x41, 0x4E2D),
+            (0x10000, 0x10FFFF),
+        ];
+        for (lo, hi) in ranges {
+            let mut seqs = Vec::new();
+            utf8_sequences(lo, hi, &mut seqs);
+            let matches = |c: char| {
+                let mut buf = [0u8; 4];
+                let bytes = c.encode_utf8(&mut buf).as_bytes();
+                seqs.iter()
+                    .filter(|s| {
+                        s.len() == bytes.len()
+                            && s.iter().zip(bytes).all(|(&(a, b), &x)| a <= x && x <= b)
+                    })
+                    .count()
+            };
+            for cp in (0..=0x10FFFFu32).step_by(7).chain([lo, hi, 0x10FFFF]) {
+                if let Some(c) = char::from_u32(cp) {
+                    let want = usize::from(lo <= cp && cp <= hi);
+                    assert_eq!(matches(c), want, "{cp:#x} in {lo:#x}..={hi:#x}");
+                }
+            }
+        }
+    }
 }

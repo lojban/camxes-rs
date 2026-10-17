@@ -52,10 +52,17 @@ impl TokenGrammar {
         term_names: Vec<String>,
         productions: Vec<Production>,
         start_name: &str,
-    ) -> Self {
+    ) -> Result<Self, String> {
         let nonterminal_count = nt_names.len();
         let mut by_lhs = vec![Vec::new(); nonterminal_count];
         for (index, production) in productions.iter().enumerate() {
+            let in_range = |symbol: &Symbol| match *symbol {
+                Symbol::Nt(id) => (id as usize) < nonterminal_count,
+                Symbol::Term(id) => (id as usize) < term_names.len(),
+            };
+            if !in_range(&Symbol::Nt(production.lhs)) || !production.rhs.iter().all(in_range) {
+                return Err(format!("production {index} uses an unknown symbol"));
+            }
             by_lhs[production.lhs as usize].push(index);
         }
         let nt_by_name: HashMap<String, NtId> = nt_names
@@ -70,8 +77,8 @@ impl TokenGrammar {
             .collect();
         let start = *nt_by_name
             .get(start_name)
-            .unwrap_or_else(|| panic!("missing start NT {start_name}"));
-        Self {
+            .ok_or_else(|| format!("missing start NT {start_name}"))?;
+        Ok(Self {
             nt_names,
             term_names,
             productions,
@@ -82,7 +89,7 @@ impl TokenGrammar {
             elidables: HashMap::new(),
             term_by_name,
             nt_by_name,
-        }
+        })
     }
 
     pub fn nt(&self, name: &str) -> Option<NtId> {

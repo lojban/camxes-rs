@@ -331,7 +331,7 @@ pub fn compile_ebnf(src: &str, start: &str) -> Result<(TokenGrammar, CompileStat
         compiler.term_names,
         compiler.productions,
         start,
-    );
+    )?;
     grammar.source_nts = source_nts;
     grammar.elidables = compiler.elidables;
     Ok((grammar, stats))

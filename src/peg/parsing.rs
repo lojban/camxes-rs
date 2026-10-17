@@ -66,6 +66,9 @@ pub enum ErrorKind {
     NotDidMatch(Vec<ParseNode>),
     NonTerminalDoesNotMatch,
     NonTerminalDoesNotExist(String),
+    /// The parse ran out of stack (see [`crate::peg::stack`]):
+    /// very deep nesting, or a left-recursive rule.
+    RecursionLimit,
 }
 
 /// Parse error with lazy line/column: only `position` is stored; use `line_column(input)` when needed.
@@ -129,6 +132,7 @@ impl Display for ErrorKind {
                 write!(f, "Not predicate matched {} nodes", nodes.len())
             }
             ErrorKind::NonTerminalDoesNotMatch => write!(f, "Non-terminal does not match"),
+            ErrorKind::RecursionLimit => write!(f, "Recursion limit (stack budget) exceeded"),
             ErrorKind::NonTerminalDoesNotExist(name) => {
                 write!(f, "Non-terminal rule '{}' does not exist", name)
             }

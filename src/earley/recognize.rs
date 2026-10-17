@@ -91,6 +91,10 @@ pub(super) struct Parse<'g> {
     /// into a nonterminal that already matched).
     peg_mode: bool,
     furthest: usize,
+    /// Lowest stack address the recursive helpers may reach (see
+    /// [`crate::peg::stack`]); past it the parse is abandoned.
+    stack_floor: usize,
+    out_of_stack: bool,
 }
 
 enum Mode {
@@ -119,6 +123,8 @@ impl<'g> Parse<'g> {
             quote_memo: FxHashMap::default(),
             peg_mode: false,
             furthest: 0,
+            stack_floor: crate::peg::stack::stack_floor(None),
+            out_of_stack: false,
         }
     }
 
@@ -149,6 +155,20 @@ impl<'g> Parse<'g> {
 
     pub(super) fn furthest(&self) -> usize {
         self.furthest
+    }
+
+    /// True once the recursion got too deep for the thread's stack: the
+    /// results are then incomplete and the parse must be reported failed.
+    pub(super) fn out_of_stack(&self) -> bool {
+        self.out_of_stack
+    }
+
+    #[inline]
+    fn too_deep(&mut self) -> bool {
+        if !self.out_of_stack && crate::peg::stack::stack_address() < self.stack_floor {
+            self.out_of_stack = true;
+        }
+        self.out_of_stack
     }
 
     /// Add the productions of `nt` that can start at `i` (FIRST/nullable filter).
@@ -281,6 +301,9 @@ impl<'g> Parse<'g> {
         if let Some(v) = self.all_ends.get(&key) {
             return v.clone();
         }
+        if self.too_deep() {
+            return Rc::new(Vec::new());
+        }
         if !self.ends_active.insert(key) {
             return Rc::new(Vec::new());
         }
@@ -343,6 +366,9 @@ impl<'g> Parse<'g> {
         if let Some(&v) = self.pred_memo.get(&key) {
             return v;
         }
+        if self.too_deep() {
+            return false;
+        }
         if !self.pred_active.insert(key) {
             // Zero-width cycle through lookaheads: treat as no match.
             return false;
@@ -369,6 +395,9 @@ impl<'g> Parse<'g> {
     fn nt_ends(&mut self, nt: u32, pos: u32) -> Ends {
         if let Some(v) = self.nt_pref.get(&(nt, pos)) {
             return v.clone();
+        }
+        if self.too_deep() {
+            return Rc::new(Vec::new());
         }
         if !self.pref_active.insert((nt, pos)) {
             return Rc::new(Vec::new());
@@ -442,6 +471,9 @@ impl<'g> Parse<'g> {
         if let Some(v) = self.seq_pref.get(&key) {
             return v.clone();
         }
+        if self.too_deep() {
+            return Rc::new(Vec::new());
+        }
         let rhs_len = self.g.prods[prod as usize].rhs.len() as u32;
         let out = if idx == rhs_len {
             Rc::new(vec![pos])
@@ -467,6 +499,9 @@ impl<'g> Parse<'g> {
     pub(super) fn derive(&mut self, nt: u32, start: usize, end: usize) -> Vec<ParseNode> {
         let (s, e) = (start as u32, end as u32);
         let mut children = Vec::new();
+        if self.too_deep() {
+            return children;
+        }
         for pi in 0..self.g.by_lhs[nt as usize].len() {
             let p = self.g.by_lhs[nt as usize][pi];
             if !self.done.get(&(p, s)).is_some_and(|v| v.contains(&e)) {

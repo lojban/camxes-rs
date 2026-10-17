@@ -7,7 +7,7 @@ use crate::peg::grammar::{
 };
 use crate::peg::parsing::{ParseNode, Span};
 use crate::peg::rule::Rule;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -30,6 +30,9 @@ impl Transformer<'_> {
                 memo: RefCell::new(MemoMap::default()),
                 annotations: Arc::default(),
                 delimiters: RefCell::default(),
+                stack_budget: None,
+                stack_floor: Cell::new(0),
+                recursion_exceeded: Cell::new(false),
             }),
             [ParseNode::NonTerminal { name: n, .. }] => Err(
                 TransformError::CstShouldStartWithGrammar(format!("Found '{n}' instead!")),
@@ -85,10 +88,10 @@ impl Transformer<'_> {
             .iter()
             .take_while(|t| !Self::is_token(SPACING, t))
             .filter_map(|t| match t {
-                ParseNode::Terminal { span: Span(s, e) } => Some(self.source[*s..*e].to_string()),
+                ParseNode::Terminal { span: Span(s, e) } => Some(self.slice(*s, *e)),
                 _ => None,
             })
-            .collect::<String>();
+            .collect::<Result<String>>()?;
         if result.is_empty() {
             Err(TransformError::EmptyIdentifier)
         } else {
@@ -187,7 +190,8 @@ impl Transformer<'_> {
                 name,
                 span: Span(s, e),
                 ..
-            } if name == CHAR => Ok(self.source[*s..*e]
+            } if name == CHAR => Ok(self
+                .slice(*s, *e)?
                 .replace("\\'", "'")
                 .replace("\\\"", "\"")
                 .replace("\\[", "[")
@@ -202,7 +206,7 @@ impl Transformer<'_> {
     fn convert_literal(&self, parse_node: &ParseNode) -> Result<Rule> {
         let tokens = Self::get_tokens(LITERAL, parse_node)?;
         let content =
-            tokens[1..tokens.len() - 2]
+            Self::inner_tokens(tokens)?
                 .iter()
                 .try_fold(String::new(), |mut acc, t| {
                     acc.push_str(&self.unescape_char(t)?);
@@ -213,7 +217,7 @@ impl Transformer<'_> {
 
     fn convert_class(&self, parse_node: &ParseNode) -> Result<Rule> {
         let tokens = Self::get_tokens(CLASS, parse_node)?;
-        let (parts, symbols) = tokens[1..tokens.len() - 2].iter().try_fold(
+        let (parts, symbols) = Self::inner_tokens(tokens)?.iter().try_fold(
             (vec![], HashSet::new()),
             |(mut parts, mut symbols), member| {
                 for t in Self::get_tokens(CLASS_MEMBER, member)? {
@@ -248,6 +252,26 @@ impl Transformer<'_> {
             self.unescape_char(&tokens[0])?,
             self.unescape_char(&tokens[2])?,
         ))
+    }
+
+    /// Grammar text for a token span; an error (not a panic) if the span is
+    /// out of range or not on character boundaries.
+    fn slice(&self, s: usize, e: usize) -> Result<String> {
+        self.source
+            .get(s..e)
+            .map(str::to_string)
+            .ok_or_else(|| TransformError::UnExpectedToken(format!("Bad token span {s}..{e}")))
+    }
+
+    /// The tokens between a literal's or class's delimiters: all but the
+    /// opening one and the closing delimiter + spacing.
+    fn inner_tokens(tokens: &[ParseNode]) -> Result<&[ParseNode]> {
+        if tokens.len() < 3 {
+            return Err(TransformError::WrongNumberOfTokens(
+                "Literal or class needs delimiters".into(),
+            ));
+        }
+        Ok(&tokens[1..tokens.len() - 2])
     }
 
     fn get_tokens<'a>(name: &str, parse_node: &'a ParseNode) -> Result<&'a Vec<ParseNode>> {

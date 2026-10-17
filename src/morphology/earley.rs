@@ -151,7 +151,8 @@ fn cll_piece(
     trail_pause: bool,
     out: &mut Vec<MorphWord>,
 ) -> Result<(), MorphologyError> {
-    let body = &input[start..end];
+    // Spans come from the parser and sit on character boundaries.
+    let body = input.get(start..end).unwrap_or_default();
     // Whole piece as one word, using any written pause evidence.
     let mut spelled = String::with_capacity(body.len() + 2);
     if lead_pause {
@@ -214,7 +215,7 @@ fn word_dialect(word: &str, class: WordClass) -> WordDialect {
 }
 
 fn push(input: &str, start: usize, end: usize, class: WordClass, out: &mut Vec<MorphWord>) {
-    let surface = &input[start..end];
+    let surface = input.get(start..end).unwrap_or_default();
     let spans = if class == WordClass::Cmavo {
         split_cmavo_cluster(surface)
     } else {

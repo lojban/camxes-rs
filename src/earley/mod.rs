@@ -47,7 +47,6 @@ pub(crate) struct ByteSet([u64; 4]);
 
 impl ByteSet {
     pub(crate) const EMPTY: ByteSet = ByteSet([0; 4]);
-    pub(crate) const ALL: ByteSet = ByteSet([u64::MAX; 4]);
 
     pub(crate) fn union(&mut self, other: &ByteSet) -> bool {
         let mut changed = false;
@@ -156,13 +155,14 @@ impl EarleyGrammar {
         let mut chart = recognize::Parse::new(self, input.as_bytes());
         chart.set_peg_mode();
         chart.run_main();
-        match chart.preferred_end(self.start, 0) {
+        let result = match chart.preferred_end(self.start, 0) {
             Some(end) => {
                 let nodes = chart.derive(self.start, 0, end);
                 ParseResult(1, end, Arc::new(Ok(nodes)))
             }
             None => self.failure(chart.furthest()),
-        }
+        };
+        self.unless_out_of_stack(&chart, result)
     }
 
     /// Parse requiring the start rule to span the whole `input`. Returns the
@@ -172,31 +172,60 @@ impl EarleyGrammar {
         let mut chart = recognize::Parse::new(self, input.as_bytes());
         chart.run_main();
         let n = input.len();
-        if chart.has_end(self.start, 0, n) {
+        let result = if chart.has_end(self.start, 0, n) {
             let nodes = chart.derive(self.start, 0, n);
             ParseResult(1, n, Arc::new(Ok(nodes)))
         } else {
             self.failure(chart.furthest())
-        }
+        };
+        self.unless_out_of_stack(&chart, result)
     }
 
     /// Like [`parse`](Self::parse) but returns `(preferred, complete)`: the
     /// PEG-preferred match end (if any) and whether some derivation spans all
-    /// of `input`, computed from a single chart.
+    /// of `input`, computed from a single chart. Input nested too deeply for
+    /// the thread's stack gives `(None, false)`.
     pub fn analyze_ends(&self, input: &str) -> (Option<usize>, bool) {
         let mut chart = recognize::Parse::new(self, input.as_bytes());
         chart.set_peg_mode();
         chart.run_main();
-        (
+        let ends = (
             chart.preferred_end(self.start, 0),
             chart.has_end(self.start, 0, input.len()),
-        )
+        );
+        if chart.out_of_stack() {
+            (None, false)
+        } else {
+            ends
+        }
     }
 
     /// Serialize [`parse`](Self::parse) output as pretty JSON (same shape as
     /// [`Peg::parse_to_json`](crate::peg::grammar::Peg::parse_to_json)).
     pub fn parse_to_json(&self, input: &str) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(&self.parse(input))
+    }
+
+    /// `result`, or a [`ErrorKind::RecursionLimit`] error if the chart ran
+    /// out of stack (its answers are then incomplete).
+    fn unless_out_of_stack(
+        &self,
+        chart: &recognize::Parse<'_>,
+        result: ParseResult,
+    ) -> ParseResult {
+        if !chart.out_of_stack() {
+            return result;
+        }
+        ParseResult(
+            1,
+            0,
+            Arc::new(Err(ParseError {
+                position: 0,
+                rule_name: self.names[self.start as usize].clone(),
+                error: ErrorKind::RecursionLimit,
+                cause: None,
+            })),
+        )
     }
 
     fn failure(&self, position: usize) -> ParseResult {
@@ -299,6 +328,35 @@ mod tests {
         // Grammar text stays ASCII; the input has multi-byte characters.
         let g = "s <- . 'b' / [a-z]+ / 'x'";
         same_as_peg("s", g, &["пb", "п", "abc", "xп", "ж"]);
+    }
+
+    #[test]
+    fn non_ascii_grammar_text_matches_peg() {
+        // `.` and ranges match whole characters in both engines.
+        let g = "s <- 'жп' . / [а-я]+ '😀'? / [é-ü] . . / 'x' [!-ÿ]* !.";
+        same_as_peg(
+            "s",
+            g,
+            &[
+                "жп😀",
+                "жпa",
+                "привет",
+                "мир😀",
+                "é中x",
+                "ü",
+                "xab",
+                "xé",
+                "x中",
+                "",
+                "😀",
+                "ж",
+                "ab",
+                "ÿ",
+            ],
+        );
+        let peg = Peg::new("s", g).unwrap();
+        assert_eq!(peg.parse("мир😀").1, "мир😀".len());
+        assert_eq!(peg.parse("жп😀").1, "жп😀".len());
     }
 
     #[test]

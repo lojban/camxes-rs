@@ -131,8 +131,9 @@ assert_eq!(result.1, 5); // bytes matched
 same text, and compiles it to a CFG:
 
 * `a / b` becomes an *unordered* alternation; `e*`, `e+`, `e?` become
-  right-recursive helper nonterminals; literals, classes, ranges and `.`
-  become byte-set terminals.
+  right-recursive helper nonterminals; literals and classes become byte
+  terminals; `.` and ranges match one whole character (UTF-8 byte-range
+  sequences), like the PEG engine.
 * `&e` / `!e` become zero-width lookahead symbols, decided by a separate
   Earley recognition of `e` from the current position ("does `e` derive some
   prefix of the rest?"), memoized per (rule, position).
@@ -369,6 +370,15 @@ or `RUST_LOG=debug cargo run --example cmaxes-test`.
   `label_check` mismatches.
 * The vendored CLL Chapter 21 layer drops words its morphology rejects
   (reported in `gaps`) and approximates some BU/ZEI interactions.
+* **Errors, not panics:** malformed grammar text (including non-ASCII) is a
+  `GrammarError` / `CompileError`, and no input string makes a parse panic
+  (`tests/robustness.rs`). Recursion deeper than the current thread's stack
+  allows (very deep nesting, left-recursive rules) fails with
+  `ErrorKind::RecursionLimit`; the stack size is queried on Linux and macOS,
+  elsewhere 1 MiB is assumed (`peg::stack`, `Peg::set_stack_budget`).
+  Worst-case cost is still high: the Earley engine and the vendored CLL word
+  analysis are cubic in the length of one unbroken word, so cap untrusted
+  input length.
 * `Peg` memoizes in a `RefCell` and is not `Sync`; use one parser per thread
   (as `syntax` does). `EarleyGrammar` is `Send + Sync`.
 

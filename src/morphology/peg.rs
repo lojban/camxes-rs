@@ -86,7 +86,9 @@ fn collect(
             "fuhivla" => WordClass::Fuhivla,
             other => return Err((start, format!("unexpected jbovla child `{other}`"))),
         };
-        let surface = &input[start..end];
+        let Some(surface) = input.get(start..end) else {
+            return Err((start, format!("bad span {start}..{end}")));
+        };
         if class == WordClass::Cmavo {
             // The grammar already yields one simple cmavo per node, but keep
             // the split for safety with trailing pause characters.

@@ -451,25 +451,29 @@ impl ParseNode {
                 .production
                 .and_then(|prod| grammar.elidables.get(&(prod as usize)))
             {
-                let owner_path = ancestors
+                // A tree from this grammar always has the owner; a tree
+                // paired with some other grammar just records no elision.
+                if let Some(owner_path) = ancestors
                     .iter()
                     .rev()
                     .find(|(name, _)| name == &site.source_rule)
                     .map(|(_, path)| path.clone())
-                    .expect("elidable source rule has no owner in parse tree");
-                elisions.push(StructuralElision {
-                    terminal: site.terminal.clone(),
-                    position: raw.start,
-                    source_rule: site.source_rule.clone(),
-                    owner_path,
-                });
+                {
+                    elisions.push(StructuralElision {
+                        terminal: site.terminal.clone(),
+                        position: raw.start,
+                        source_rule: site.source_rule.clone(),
+                        owner_path,
+                    });
+                }
             }
 
             let source_rule = !raw.terminal
                 && raw.production.is_some_and(|prod| {
                     grammar
-                        .source_nts
-                        .contains(&grammar.productions[prod as usize].lhs)
+                        .productions
+                        .get(prod as usize)
+                        .is_some_and(|p| grammar.source_nts.contains(&p.lhs))
                 });
             if raw.terminal || source_rule {
                 path.push(siblings.len());
@@ -638,7 +642,8 @@ mod tests {
                 },
             ],
             "S",
-        );
+        )
+        .unwrap();
         assert!(recognizes(&g, 0, &[0]));
         assert!(recognizes(&g, 0, &[0, 0, 0]));
         assert!(!recognizes(&g, 0, &[]));
@@ -660,7 +665,8 @@ mod tests {
                 },
             ],
             "S",
-        );
+        )
+        .unwrap();
         let tree = derive_one(&grammar, 0, &[0]).expect("accepted derivation");
         assert_eq!(tree.symbol, "S");
         assert_eq!(tree.production, Some(0));
@@ -696,7 +702,8 @@ mod tests {
                 },
             ],
             "S",
-        );
+        )
+        .unwrap();
         assert!(recognizes(&g, 0, &[0]), "A with nullable N");
         assert!(recognizes(&g, 0, &[0, 1]), "A B");
         assert!(!recognizes(&g, 0, &[1]));
@@ -722,7 +729,8 @@ mod tests {
                 },
             ],
             "S",
-        );
+        )
+        .unwrap();
         assert!(recognizes(&nullable_prefix, 0, &[1]));
         assert!(recognizes(&nullable_prefix, 0, &[0, 1]));
         assert!(derive_one(&nullable_prefix, 0, &[1]).is_some());
@@ -741,7 +749,8 @@ mod tests {
                 },
             ],
             "S",
-        );
+        )
+        .unwrap();
         assert!(recognizes(&left_recursive, 0, &[1, 0, 0]));
         assert!(derive_one(&left_recursive, 0, &[1, 0, 0]).is_some());
     }

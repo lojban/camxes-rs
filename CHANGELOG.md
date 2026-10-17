@@ -69,6 +69,25 @@ with a major bump rather than claiming compatibility with the 1.x API.
   runs it with `--features earley`.
 
 ### Fixed
+- Public entry points return errors instead of panicking on arbitrary input
+  or grammar text (new `tests/robustness.rs` fuzz-style test):
+  - `Peg::new` panicked on non-ASCII grammar text (`'п'`, `[а-я]`); `.`
+    now matches one whole character, ranges advance by the character's
+    length, and the Earley engine compiles `.`/ranges to UTF-8 sequences, so
+    non-ASCII grammars work the same in both engines. Grammar text the
+    bootstrap parser cannot fully consume is now a `GrammarError`.
+  - Deep recursion (deeply nested input, left-recursive rules such as
+    `s <- s 'a'`) overflowed the stack and aborted the process in both
+    engines; it now fails with the new `ErrorKind::RecursionLimit`
+    (stack guard in `peg::stack`, `Peg::set_stack_budget`). The PEG parser's
+    stack frames were split per rule kind, cutting stack use per nesting
+    level ~8x in debug and ~20% in release.
+  - `e*` / `e+` where `e` can match empty looped forever; repetition now
+    stops at an empty match.
+  - `cll::grammar::compile_ebnf` with an unknown start rule panicked; it is
+    now an `Err`. `TokenGrammar::from_parts` returns `Result` and checks
+    symbol ids. `cll::grammar` `ParseNode::structure` no longer panics on a tree from
+    another grammar.
 - The PEG engine panicked on non-ASCII input (e.g. a Cyrillic letter in a
   Lojban text) when `.` had consumed one byte of a multi-byte character;
   literals and classes now compare bytes and ranges require a character

@@ -1,10 +1,10 @@
 use super::constants::*;
 use super::errors::GrammarError;
 use super::types::{MemoMap, Peg};
-use crate::peg::parsing::ParseResult;
+use crate::peg::parsing::{ErrorKind, ParseError, ParseResult};
 use crate::peg::rule::Rule;
 use crate::peg::transformer::Transformer;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -20,7 +20,15 @@ impl Peg {
         let grammar = grammar.trim();
         let parser = Self::bootstrap();
         let mut peg = match parser.parse(grammar) {
-            ParseResult(_, _, ref payload) => match payload.as_ref() {
+            ParseResult(_, end, ref payload) => match payload.as_ref() {
+                Ok(_) if end != grammar.len() => {
+                    return Err(GrammarError::Parse(ParseError {
+                        position: end,
+                        rule_name: TEXT.to_string(),
+                        error: ErrorKind::ExpressionDoesNotMatch,
+                        cause: None,
+                    }))
+                }
                 Ok(tokens) => Transformer { source: grammar }
                     .build(start, tokens.clone())
                     .map_err(GrammarError::from)?,
@@ -35,7 +43,21 @@ impl Peg {
         // Clear the memoization cache before starting a new parse
         self.memo.borrow_mut().clear();
         self.delimiters.borrow_mut().clear();
-        Rule::NonTerminal(self.start.clone()).parse(self, input, 0, 0)
+        self.arm_stack_guard();
+        let result = Rule::NonTerminal(self.start.clone()).parse(self, input, 0, 0);
+        if self.recursion_exceeded.get() {
+            return ParseResult(
+                result.0,
+                0,
+                std::sync::Arc::new(Err(ParseError {
+                    position: 0,
+                    rule_name: self.start.clone(),
+                    error: ErrorKind::RecursionLimit,
+                    cause: None,
+                })),
+            );
+        }
+        result
     }
 
     /// Parses the input and returns the result as a JSON string.
@@ -58,6 +80,9 @@ impl Peg {
             memo: RefCell::new(MemoMap::default()),
             annotations: Arc::default(),
             delimiters: RefCell::default(),
+            stack_budget: None,
+            stack_floor: Cell::new(0),
+            recursion_exceeded: Cell::new(false),
         }
     }
 }
