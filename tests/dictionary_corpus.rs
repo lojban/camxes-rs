@@ -97,16 +97,6 @@ const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
         "CLL §4.9 rule 3: a word starting with a vowel must be preceded by a pause, so the camxes split before a vowel-initial word is invalid",
     ),
     (
-        "comma",
-        "accepted difference",
-        "CLL §3.3: a comma is a syllable break, not a word boundary; camxes splits words at commas",
-    ),
-    (
-        "vowel-grouping",
-        "CLL rule",
-        "a vowel run whose left grouping starts with a non-diphthong pair (`eu`, `ou`): CLL §3.5 \"pairs vowels from the left into syllables\" (Example 3.6: the diphthong ei followed by the vowel i) and \"In order to indicate a different grouping, the comma must always be used\"; `eu` and `ou` are not among the §3.4 diphthongs, and two vowels that are not a diphthong form a two-syllable pair only \"with the apostrophe separating them\" (§3.5); camxes accepts the run",
-    ),
-    (
         "fuhivla-cluster",
         "CLL rule",
         "CLL §4.7 rule 1: every fu'ivla \"must contain a consonant cluster in the first five letters of the word\" (the apostrophe is not a consonant, §3.6); `ku'aidzi` has `k u ' a i` as its first five letters and its only cluster `dz` at letters 6-7; camxes allows a later cluster",
@@ -115,26 +105,6 @@ const DIFFERENCE_CATEGORIES: &[(&str, &str, &str)] = &[
         "hyphen-not-required",
         "CLL rule",
         "CLL §4.6: \"It is illegal to add a hyphen at a place that is not required\"; an r/n after a non-initial CVV rafsi is not a hyphen, so the word is not a lujvo (Earley: fu'ivla)",
-    ),
-    (
-        "n-hyphen",
-        "CLL rule",
-        "CLL §4.6: the n-hyphen is used only before `r` (otherwise the r-hyphen); `zein` + `gamy…` has an n-hyphen before `g`, so it is not a lujvo",
-    ),
-    (
-        "rafsi-vowel-initial",
-        "CLL rule",
-        "CLL §4.5: every rafsi form (CVC, CVV, CV'V, CCV, CVCC, CCVC, CVCCV, CCVCV) begins with a consonant; camxes lujvo that start with a vowel (`afxanyru'u`) or have a vowel-initial piece after `y` (`pedy'utka`, `batkyuidje`) are not built from rafsi, even with open rafsi",
-    ),
-    (
-        "y-after-vowel",
-        "CLL rule",
-        "CLL §4.6: the `y` hyphen follows only a consonant-final (CVC or 4-letter) rafsi; camxes allows `y` after a CVV/CV'V piece (`baxmasi'ygu'e`, `ximblai'yma'a`)",
-    ),
-    (
-        "rafsi-shape",
-        "CLL rule",
-        "camxes lujvo with a piece of no §4.5 rafsi shape: stems longer than 4 letters before `y` (`kexmair-`, `faurs-`), CVCV or CCVV finals (`-todi`, `-crai`), a 5-letter rafsi not at the end (`-junta-`), a 4-letter rafsi without `y` (`karn-cau`); Earley rejects the word or reads the words it falls apart into (§4.6/§4.7)",
     ),
 ];
 

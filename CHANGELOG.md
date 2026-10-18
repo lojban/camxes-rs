@@ -29,7 +29,7 @@ with a major bump rather than claiming compatibility with the 1.x API.
   (`src/cll/data/cll21.ebnf`) over selma'o tokens from `cmavo_selmaho.tsv`,
   with elidable terminators; trees use the Chapter 21 rule names. It gives
   the same word split and classes as the PEG engine on every PEG-accepted
-  dictionary headword except 230 documented camxes/CLL differences
+  dictionary headword except 37 documented camxes/CLL differences
   (`tests/data/known-differences.tsv`, README "Differences between the PEG
   (camxes) and Earley (CLL) engines"), and also accepts the
   older CLL dialect (obsolete words such as `kuarka`; note that the
@@ -99,6 +99,15 @@ with a major bump rather than claiming compatibility with the 1.x API.
   and `syntax::parse_with_options` take any options. `WordDialect` stays
   rule-based. `volapuk`, `laus`, `lat`, `lauDZIS`, `katajinadelazariRAdek`,
   `kuualalumpur`, `tigbalan`, `doitclan` now agree with the PEG engine.
+- Brivla/fu'ivla-stem rafsi in the camxes dialect (shared
+  `constraints::camxes_lujvo`): mirroring the camxes grammar
+  (`fuhivla_rafsi`, `hy_rafsi`, `y h?`, a final `fuhivla`), a lujvo may use
+  a consonant-final brivla stem + `y` (`afxanyru'u`, `kexmairybau`), a
+  vowel-final stem + `'y` (`baxmasi'ygu'e`), `y'` before a vowel-initial
+  piece (`pedy'utka`) and a brivla-shaped last piece (`bemymantodi`). Pieces
+  keep §3.7 clusters, §3.4–3.5 vowel groups and the §4.6 `r`/`n` hyphen rule
+  between short rafsi; used only when no CLL reading survives. Strict CLL
+  rejects these words.
 - Consonant-only names in the shared CLL code (both dialects): a name made
   only of consonants is accepted when every adjacent pair and triple is
   permissible (§3.7): `.d.`, `.c.`, `.t.`, `.rl.`, `.xm.` are names, `.mz.`
@@ -107,6 +116,21 @@ with a major bump rather than claiming compatibility with the 1.x API.
   with the PEG engine.
 
 ### Fixed
+- `grammars::LOJBAN_MORPHOLOGY_GRAMMAR` (PEG) treated a comma as a pause
+  (`pause_0 <- [ ,.]+`), splitting `lijdrba'a,i` into `lijdrba'a` + `i`.
+  A comma is now a syllable break inside a word (CLL §3.3): before a
+  vowel it separates syllables, before a consonant or an on-glide it is
+  skipped, and only a comma next to a space or the end of input is a pause.
+  The 7 dictionary comma words (`lijdrba'a,i`, `OTa,uas`, `bodga,ias`,
+  `nu,IORK`, `tai,UAN`, `xali,uyd`, `klanrniut,ni`) are now one word, as in
+  the Earley engine; `bie,uaRUC` is newly accepted (standard name). No
+  other dictionary word changes. The rule-based obsolete-form check reads
+  commas the same way.
+- Earley (shared CLL code): `i`/`u` before a vowel is an on-glide starting
+  the next syllable in fu'ivla (§3.4), so `gleua`, `proteuu`, `paxtoua`,
+  `iuctcouo` and the other 11 former `vowel-grouping` words are accepted.
+  The comma retry strips only commas that do not separate two vowels
+  (`klanrniut,ni`).
 - Earley (shared CLL code): vowel runs in fu'ivla are grouped from the left
   as CLL §3.5 says ("When more than two vowels occur together in Lojban,
   the normal pronunciation pairs vowels from the left into syllables"):
@@ -174,6 +198,11 @@ with a major bump rather than claiming compatibility with the 1.x API.
   whose left grouping starts with the non-diphthong `eu`/`ou`) and
   `fuhivla-cluster` 13 (`nijnanidouaga` moved to `vowel-grouping`;
   `mla'aiana` now agrees). Total 230.
+  After the stem-rafsi, on-glide and comma changes: 230 → 37
+  (`hyphen-not-required` 20, `fuhivla-cluster` 13, `hesitation` 2,
+  `medial-pair` 1, `vowel-initial-pause` 1); the categories `comma`,
+  `vowel-grouping`, `n-hyphen`, `rafsi-vowel-initial`, `y-after-vowel` and
+  `rafsi-shape` are gone.
 - `Peg` gained crate-private fields (annotations, delimiter stack), so it can
   no longer be built with a struct literal outside the crate; use
   `Peg::new` (the public fields `rules`, `start`, `memo` are unchanged).
@@ -197,7 +226,7 @@ with a major bump rather than claiming compatibility with the 1.x API.
   the §4.5 restrictions, the literal slinku'i test, the §4.6/§4.7 cmavo
   break-up rule, digits as `PA`) are shared with tergenzalvi. The mapping
   to camxes word types and the obsolete-form rule moved to
-  `src/morphology/camxes.rs`. The 230 PEG-accepted headwords on which the
+  `src/morphology/camxes.rs`. The 37 PEG-accepted headwords on which the
   engines now differ are listed by category in
   `tests/data/known-differences.tsv` and in the README.
 - The Chapter 21 lexer no longer splits an unknown cmavo before a vowel

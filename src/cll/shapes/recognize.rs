@@ -227,14 +227,18 @@ pub fn recognize(input: &str) -> ShapeResult {
         return primary;
     }
     // Commas are orthographic syllable marks (§3.3). If the marked form is not
-    // a CFG shape (e.g. `DI,ky,jvo`), retry with commas stripped — but only when
-    // stripping does not create a bare illegal vowel pair (V,V hiatus cases like
-    // `kore,a` must keep the comma).
-    let stripped: String = normalized.chars().filter(|&c| c != ',').collect();
+    // a CFG shape (e.g. `DI,ky,jvo`, `klanrniut,ni`), retry without the
+    // commas that do not separate two vowels. A comma between vowels keeps
+    // them in different syllables (`kore,a`, `lijdrba'a,i`), so it stays.
+    let bytes = normalized.as_bytes();
+    let stripped: String = normalized
+        .char_indices()
+        .filter(|&(i, c)| {
+            c != ',' || (i > 0 && i + 1 < bytes.len() && is_v(bytes[i - 1]) && is_v(bytes[i + 1]))
+        })
+        .map(|(_, c)| c)
+        .collect();
     if stripped == normalized {
-        return primary;
-    }
-    if bare_illegal_vowel_adjacency(&stripped) {
         return primary;
     }
     let mut alt = recognize_normalized(stripped);
@@ -245,21 +249,6 @@ pub fn recognize(input: &str) -> ShapeResult {
     } else {
         primary
     }
-}
-
-fn bare_illegal_vowel_adjacency(word: &str) -> bool {
-    let bytes = word.as_bytes();
-    let mut byte_index = 0;
-    while byte_index + 1 < bytes.len() {
-        if is_v(bytes[byte_index]) && is_v(bytes[byte_index + 1]) {
-            let pair = [bytes[byte_index], bytes[byte_index + 1]];
-            if !matches!(&pair[..], b"ai" | b"ei" | b"oi" | b"au") {
-                return true;
-            }
-        }
-        byte_index += 1;
-    }
-    false
 }
 
 fn recognize_normalized(normalized: String) -> ShapeResult {
@@ -398,8 +387,14 @@ mod tests {
         for w in ["blaia", "gruue", "jdaio", "tsauai", "traii", "gondiii'i"] {
             assert!(recognize(w).classes.contains(&MorphClass::Fuhivla), "{w}");
         }
-        // `eu`, `ou`, `ea` are not diphthongs: a comma or apostrophe is needed.
-        for w in ["proteuu", "gleua", "paxtoua", "blea"] {
+        // §3.4: `i`/`u` before a vowel is an on-glide starting the next
+        // syllable, so `e|uu`, `e|ua`, `o|ua` group even though `eu`/`ou` are
+        // not diphthongs.
+        for w in ["proteuu", "gleua", "paxtoua", "iuctcouo"] {
+            assert!(recognize(w).classes.contains(&MorphClass::Fuhivla), "{w}");
+        }
+        // `ea`, `oa` are neither diphthongs nor vowel + glide.
+        for w in ["blea", "kroa"] {
             assert!(!recognize(w).classes.contains(&MorphClass::Fuhivla), "{w}");
         }
     }

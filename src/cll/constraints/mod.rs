@@ -5,6 +5,7 @@
 //!
 //! Public entry: [`constrain`] / [`morph_parse`] → [`ConstrainedResult`].
 
+pub mod camxes_lujvo;
 pub mod class_mutex;
 pub mod cmevla_ban;
 pub mod lujvo_hyphen;
@@ -162,6 +163,19 @@ fn constrain_inner(original: &str, shape: &ShapeResult, opts: MorphOptions) -> C
                 };
             }
         }
+        if opts.camxes_dialect {
+            if let Some(pieces) = camxes_lujvo::try_parse(original) {
+                let mut classes = BTreeSet::new();
+                classes.insert(MorphClass::Lujvo);
+                return ConstrainedResult {
+                    accepted: true,
+                    classes,
+                    rejected_by,
+                    notes: vec![camxes_lujvo_note(&pieces)],
+                    normalized: shape.normalized.clone(),
+                };
+            }
+        }
         return ConstrainedResult {
             accepted: false,
             classes,
@@ -271,6 +285,15 @@ fn constrain_inner(original: &str, shape: &ShapeResult, opts: MorphOptions) -> C
         );
     }
 
+    // camxes dialect: brivla/fu'ivla-stem rafsi, only when no CLL reading
+    // of the word survived.
+    if opts.camxes_dialect && !classes.iter().any(|c| c.to_word_class().is_some()) {
+        if let Some(pieces) = camxes_lujvo::try_parse(norm) {
+            classes.insert(MorphClass::Lujvo);
+            notes.push(camxes_lujvo_note(&pieces));
+        }
+    }
+
     // Pauses
     match pauses::check_orthography(norm, &classes) {
         Ok(mut n) => notes.append(&mut n),
@@ -354,6 +377,10 @@ pub fn morph_parse_with(input: &str, opts: MorphOptions) -> ConstrainedResult {
         entries.insert(key, result.clone());
     });
     result
+}
+
+fn camxes_lujvo_note(pieces: &str) -> String {
+    format!("camxes dialect: lujvo with brivla/fu'ivla-stem rafsi ({pieces})")
 }
 
 /// Rafsi segmentations of a lujvo candidate under this thread's options:

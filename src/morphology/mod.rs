@@ -364,6 +364,25 @@ mod tests {
         // … and a lujvo from rafsi outside the CLL-era list (`gam`).
         let m = analyze("gamkemdau", Engine::Earley).unwrap();
         assert_eq!(m.signature(), s(&[("gamkemdau", Lujvo)]));
+        // … and fu'ivla/brivla-stem rafsi, as in camxes (both engines).
+        for w in ["afxanyru'u", "pedy'utka", "baxmasi'ygu'e", "bemymantodi"] {
+            assert_eq!(
+                analyze(w, Engine::Earley).unwrap().signature(),
+                s(&[(w, Lujvo)]),
+                "{w}"
+            );
+            #[cfg(feature = "peg")]
+            assert_eq!(
+                analyze(w, Engine::Peg).unwrap().signature(),
+                s(&[(w, Lujvo)]),
+                "{w}"
+            );
+            let strict = analyze_with_options(w, MorphOptions::default());
+            assert!(
+                strict.map_or(true, |m| m.signature() != s(&[(w, Lujvo)])),
+                "{w}"
+            );
+        }
         // Strict CLL (one switch turns off both): §4.8 bans `la` in names,
         // and `gam` is not a CLL rafsi.
         let strict = analyze_with_options("volapuk", MorphOptions::default());
@@ -378,6 +397,27 @@ mod tests {
         ] {
             let m = analyze_with_options("la .c. cu klama", opts).unwrap();
             assert_eq!(m.words[1].class, Cmevla, "{opts:?}");
+        }
+    }
+
+    #[test]
+    fn comma_is_a_syllable_break() {
+        // CLL §3.3: a comma separates syllables inside a word; it is not a
+        // word boundary (both engines).
+        use WordClass::*;
+        for &engine in Engine::available() {
+            for (w, c) in [
+                ("lijdrba'a,i", Fuhivla),
+                ("bodga,ias", Cmevla),
+                ("nu,iork", Cmevla),
+                ("klanrniut,ni", Fuhivla),
+            ] {
+                assert_eq!(
+                    analyze(w, engine).unwrap().signature(),
+                    s(&[(w, c)]),
+                    "{w} {engine:?}"
+                );
+            }
         }
     }
 

@@ -251,8 +251,9 @@ pub fn build_morph_grammar() -> Grammar {
     grammar_builder.prod(nucleus_brivla, vec![Symbol::Nt(vowel_run_nt)]);
     // General left-grouped vowel runs (§3.5): within an apostrophe-free
     // stretch the vowels pair from the left, so a stretch is a sequence of
-    // diphthongs optionally ending in one vowel (`ai|a`, `uu|e`, `iu|au|a`).
-    // A non-diphthong adjacent pair (`eu`, `ea`) has no reading here: it needs
+    // diphthongs optionally ending in one vowel (`ai|a`, `uu|e`, `iu|au|a`);
+    // see `GlideStretch` below for a vowel followed by an on-glide.
+    // A non-diphthong adjacent pair (`ea`) has no reading here: it needs
     // a comma or an apostrophe ("In order to indicate a different grouping,
     // the comma must always be used"). Which diphthongs a word class may use
     // (§3.4) is unchanged: this nucleus is only used by fu'ivla, where
@@ -263,6 +264,26 @@ pub fn build_morph_grammar() -> Grammar {
     grammar_builder.prod(
         vowel_stretch_nt,
         vec![Symbol::Nt(diphthong_nt), Symbol::Nt(vowel_stretch_nt)],
+    );
+    // §3.4: `i` and `u` before a vowel are on-glides ("used only as
+    // stand-alone words and in Lojbanized names and borrowings"), acting as
+    // the consonant-like start of the next syllable. So where the left
+    // grouping fails (`eu` is not a diphthong), a single vowel may be
+    // followed by an on-glide diphthong: `gleua` = `gle|ua`, `proteuu` =
+    // `prote|uu`. Two vowels that are neither a diphthong nor vowel +
+    // glide (`ea`, `oa`) still need a comma or apostrophe.
+    let glide_stretch_nt = grammar_builder.nt("GlideStretch");
+    grammar_builder.prod(glide_stretch_nt, vec![Symbol::Nt(on_glide_diphthong_nt)]);
+    grammar_builder.prod(
+        glide_stretch_nt,
+        vec![
+            Symbol::Nt(on_glide_diphthong_nt),
+            Symbol::Nt(vowel_stretch_nt),
+        ],
+    );
+    grammar_builder.prod(
+        vowel_stretch_nt,
+        vec![Symbol::Nt(vowel_nt), Symbol::Nt(glide_stretch_nt)],
     );
     let vowel_group_run_nt = grammar_builder.nt("VowelGroupRun");
     grammar_builder.prod(vowel_group_run_nt, vec![Symbol::Nt(vowel_stretch_nt)]);
@@ -278,6 +299,10 @@ pub fn build_morph_grammar() -> Grammar {
     // A run of at least two syllables, so that it can be a fu'ivla's only
     // vowel group (`blaia` = `blai|a`).
     let vowel_run_multi_nt = grammar_builder.nt("VowelRunMulti");
+    grammar_builder.prod(
+        vowel_run_multi_nt,
+        vec![Symbol::Nt(vowel_nt), Symbol::Nt(glide_stretch_nt)],
+    );
     grammar_builder.prod(
         vowel_run_multi_nt,
         vec![Symbol::Nt(diphthong_nt), Symbol::Nt(vowel_stretch_nt)],

@@ -22,9 +22,8 @@ pub struct MorphOptions {
     /// When set, Type-4 fu'ivla of form CCVVCV may contribute a stem rafsi
     /// (final vowel dropped) usable in lujvo, as in `tci'ile` → `tci'il` + `y` + …
     pub rafsi_fuhivla: bool,
-    /// The camxes (modern-usage) dialect: one switch for the two places
-    /// where current usage, as implemented by camxes, goes beyond the CLL
-    /// text. Off by default (strict CLL), on in [`MorphOptions::camxes`].
+    /// The camxes (modern-usage) dialect: one switch for the places where
+    /// current usage, as implemented by camxes, goes beyond the CLL text. Off by default (strict CLL), on in [`MorphOptions::camxes`].
     ///
     /// * **Rafsi outside the CLL-era list.** A lujvo may be built from any
     ///   piece of a valid §4.5 rafsi *shape* — CVC, CVV/CV'V (without
@@ -34,6 +33,10 @@ pub struct MorphOptions {
     ///   fall-apart, tosmabru (§4.11.5) and slinku'i (§4.7) rules. CLL fixes
     ///   the 1994 rafsi list; rafsi assigned later have the same forms. When
     ///   off, a lujvo must segment into rafsi of the embedded CLL-era list.
+    /// * **Brivla/fu'ivla-stem rafsi** ([`super::camxes_lujvo`]): a
+    ///   consonant-final stem + `y`, a vowel-final stem + `'y`, `y'` before a
+    ///   vowel-initial piece and a brivla-shaped last piece, as in camxes
+    ///   (`afxanyru'u`, `baxmasi'ygu'e`, `pedy'utka`, `bemymantodi`).
     /// * **`la`, `lai`, `doi` inside names.** CLL §4.8 bans them (C19) so
     ///   that `la` + name cannot be misheard; camxes and later usage allow
     ///   them (`volapuk`, `tigbalan`). When off, C19 applies.
@@ -60,8 +63,8 @@ impl MorphOptions {
     }
 
     /// The camxes dialect: [`MorphOptions::default`] with
-    /// [`MorphOptions::camxes_dialect`] on (rafsi by shape, `la`/`lai`/`doi`
-    /// inside names).
+    /// [`MorphOptions::camxes_dialect`] on (rafsi by shape, brivla-stem
+    /// rafsi, `la`/`lai`/`doi` inside names).
     pub fn camxes() -> Self {
         Self {
             camxes_dialect: true,

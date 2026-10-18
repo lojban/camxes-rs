@@ -83,7 +83,7 @@ pub fn is_obsolete_form(word: &str, is_cmevla: bool) -> bool {
     }
 }
 
-/// A lowercased word (pauses dropped, commas read as apostrophes) with the
+/// A lowercased word (pauses dropped, commas as syllable breaks) with the
 /// camxes word-level predicates. Each returns the end of its match, PEG
 /// style: ordered choice, no backtracking into a committed alternative.
 struct Word {
@@ -94,14 +94,27 @@ type M = Option<usize>;
 
 impl Word {
     fn new(text: &str) -> Self {
-        let w = text
+        // A comma is a syllable break (CLL §3.3), as in the camxes
+        // morphology grammar: before a nucleus it separates syllables like
+        // an apostrophe; before a consonant or an on-glide it is dropped.
+        let raw: Vec<u8> = text
             .bytes()
             .filter(|&b| b != b'.')
-            .map(|b| match b.to_ascii_lowercase() {
-                b',' => b'\'',
-                b => b,
-            })
+            .map(|b| b.to_ascii_lowercase())
             .collect();
+        let mut w = Vec::with_capacity(raw.len());
+        for (i, &b) in raw.iter().enumerate() {
+            if b != b',' {
+                w.push(b);
+                continue;
+            }
+            let next = raw.get(i + 1).copied().unwrap_or(0);
+            let after = raw.get(i + 2).copied().unwrap_or(0);
+            let glide = matches!(next, b'i' | b'u') && b"aeiouy".contains(&after);
+            if b"aeiouy".contains(&next) && !glide {
+                w.push(b'\'');
+            }
+        }
         Word { w }
     }
     fn at(&self, i: usize) -> u8 {

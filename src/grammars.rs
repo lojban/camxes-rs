@@ -99,7 +99,7 @@ onset <- (h / glaide / affricate / (cs !x / jz !(n / l / r))? (pfbgvkx / (t / d 
 
 nucleus <- pa_zei_karsna / re_zei_karsna / y !nucleus
 
-glaide <- (ii / w) &nucleus
+glaide <- comma? (ii / w) &nucleus
 
 re_zei_karsna <- ([a] w !u / [aeo] ii !i) !nucleus
 
@@ -123,25 +123,25 @@ zunsna <- pfbgvkx / d / jz / cs / t / syllabic
 
 syllabic <- l / m / n / r
 
-l <- [l]
+l <- comma? [l]
 
-m <- [m]
+m <- comma? [m]
 
-n <- [n] !affricate
+n <- comma? [n] !affricate
 
-r <- [r]
+r <- comma? [r]
 
-pfbgvkx <- [pfbgvkx]
+pfbgvkx <- comma? [pfbgvkx]
 
-d <- [d]
+d <- comma? [d]
 
-jz <- [jz]
+jz <- comma? [jz]
 
-cs <- [cs]
+cs <- comma? [cs]
 
-x <- [x]
+x <- comma? [x]
 
-t <- [t]
+t <- comma? [t]
 
 h <- [,'] &nucleus
 
@@ -149,7 +149,9 @@ post_word <- pause / !nucleus jbovla
 
 pause <- pause_0 / !.
 
-pause_0 <- [ ,.]+
+pause_0 <- ([ .] / [,]+ &([ .] / !.))+
+
+comma <- [,] !pause_0
 "#,
 );
 
